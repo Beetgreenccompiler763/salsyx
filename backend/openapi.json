@@ -40,7 +40,7 @@
       "get": {
         "tags": ["search"],
         "summary": "Search repositories",
-        "description": "Searches by repository name, owner, description, language, license, topics, and star range. Supports exact, partial, and fuzzy matching.",
+        "description": "Searches by repository name, owner, description, language, license, topics, and star range. Supports exact, partial, and fuzzy matching. When the local index has no matches, falls back to a live GitHub search and indexes the results.",
         "operationId": "search",
         "parameters": [
           { "name": "q", "in": "query", "description": "Search term", "schema": { "type": "string" } },

@@ -219,11 +219,48 @@ impl GithubClient {
 
     /// Estimate commit count by inspecting the `Link` header of the commits
     /// endpoint (cheap: one request, no bodies transferred).
-    /// Authorize a request with the configured bearer token, if any.
     fn authorize(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
         match &self.token {
             Some(token) => req.header("Authorization", format!("Bearer {token}")),
             None => req,
+        }
+    }
+
+    /// Search repositories via the GitHub Search API.
+    ///
+    /// Used as a live fallback when the local index has no matches, so
+    /// searching for any public repository on GitHub finds it. Results reuse
+    /// the full `GithubRepo` shape (the search payload is a repository list).
+    #[instrument(skip(self), fields(query = %query))]
+    pub async fn search_repositories(
+        &self,
+        query: &str,
+        per_page: i64,
+    ) -> Result<Vec<GithubRepo>, GithubError> {
+        let encoded =
+            url::form_urlencoded::byte_serialize(query.as_bytes()).collect::<String>();
+        let url = self.endpoint(&format!(
+            "/search/repositories?q={encoded}&per_page={per_page}"
+        ));
+
+        #[derive(Debug, Deserialize)]
+        struct SearchResponse {
+            #[allow(dead_code)]
+            total_count: i64,
+            items: Vec<GithubRepo>,
+        }
+
+        let resp = self.authorize(self.http.get(&url)).send().await?;
+
+        match resp.status() {
+            StatusCode::OK => {
+                let body: SearchResponse = resp.json().await?;
+                Ok(body.items)
+            }
+            StatusCode::FORBIDDEN | StatusCode::TOO_MANY_REQUESTS => {
+                Err(GithubError::RateLimited)
+            }
+            status => Err(GithubError::Upstream(format!("unexpected status {status}"))),
         }
     }
 
