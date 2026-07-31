@@ -27,19 +27,25 @@ pub async fn overview(
     };
     authorize(&headers, token)?;
 
-    let counts: Option<Counts> = sqlx::query_as(
+    let counts: Option<Counts> = match sqlx::query_as::<_, Counts>(
         r#"
         SELECT
-            (SELECT count(*) FROM repositories)::bigint,
-            (SELECT count(*) FROM repositories WHERE is_deleted)::bigint,
-            (SELECT count(DISTINCT repository_id) FROM archives WHERE status = 'archived')::bigint,
-            (SELECT count(*) FROM archives WHERE status = 'archived')::bigint,
-            (SELECT COALESCE(sum(size_bytes), 0) FROM archives WHERE status = 'archived')::bigint
+            (SELECT count(*) FROM repositories)::bigint AS total_repositories,
+            (SELECT count(*) FROM repositories WHERE is_deleted)::bigint AS deleted_repositories,
+            (SELECT count(DISTINCT repository_id) FROM archives WHERE status = 'archived')::bigint AS archived_repositories,
+            (SELECT count(*) FROM archives WHERE status = 'archived')::bigint AS total_archives,
+            (SELECT COALESCE(sum(size_bytes), 0) FROM archives WHERE status = 'archived')::bigint AS total_storage_bytes
         "#,
     )
     .fetch_one(&state.pool)
     .await
-    .ok();
+    {
+        Ok(counts) => Some(counts),
+        Err(e) => {
+            tracing::warn!(error = %e, "admin counts query failed");
+            None
+        }
+    };
 
     let job_breakdown: Vec<JobCount> = sqlx::query_as(
         r#"
