@@ -9,6 +9,7 @@ pub mod db;
 pub mod error;
 pub mod git;
 pub mod github;
+pub mod middleware;
 pub mod providers;
 pub mod queue;
 pub mod routes;

@@ -14,7 +14,7 @@ use salsyx_api::telemetry;
 use tower::ServiceBuilder;
 use tower_http::{
     catch_panic::CatchPanicLayer,
-    compression::CompressionLayer,
+    compression::{CompressionLayer, CompressionLevel},
     cors::CorsLayer,
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
     timeout::TimeoutLayer,
@@ -56,7 +56,10 @@ async fn main() -> anyhow::Result<()> {
             ))
             .layer(PropagateRequestIdLayer::x_request_id())
             .layer(TraceLayer::new_for_http())
-            .layer(CompressionLayer::new())
+            .layer(CompressionLayer::new()
+                .gzip(true)
+                .br(true)
+                .quality(CompressionLevel::Fastest))
             .layer(CatchPanicLayer::new())
             .layer(TimeoutLayer::with_status_code(
                 axum::http::StatusCode::GATEWAY_TIMEOUT,

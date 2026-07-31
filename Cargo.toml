@@ -14,7 +14,7 @@ repository = "https://github.com/lmdelm-dev/salsyx"
 axum = { version = "0.8", features = ["macros", "multipart", "json"] }
 tokio = { version = "1", features = ["full"] }
 tower = { version = "0.5", features = ["util"] }
-tower-http = { version = "0.6", features = ["trace", "cors", "compression-gzip", "request-id", "catch-panic", "timeout"] }
+tower-http = { version = "0.6", features = ["trace", "cors", "compression-gzip", "compression-br", "request-id", "catch-panic", "timeout"] }
 
 # Database
 sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "json", "chrono", "uuid", "macros"] }

@@ -196,9 +196,17 @@ pub async fn connect(config: &DatabaseConfig) -> Result<PgPool, AppError> {
     let options: PgConnectOptions = config.url.parse()?;
     let pool = PgPoolOptions::new()
         .max_connections(config.max_connections)
+        .min_connections(1)
         .acquire_timeout(std::time::Duration::from_secs(config.acquire_timeout_secs))
+        .idle_timeout(Some(std::time::Duration::from_secs(600)))
+        .max_lifetime(Some(std::time::Duration::from_secs(1800)))
+        .test_before_acquire(true)
         .connect_with(options)
         .await?;
+
+    // Pre-connect to verify the pool works immediately
+    use sqlx::Executor;
+    Executor::execute(&pool, "SELECT 1").await?;
 
     Ok(pool)
 }
