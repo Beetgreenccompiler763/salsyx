@@ -148,6 +148,52 @@ Every blob is **SHA-256 hashed at rest**, the hash is stored next to the
 object key, and *every* read path re-verifies (`Storage::get` fails on
 checksum mismatch). "Verify before trusting" is a hard invariant.
 
+### AAHL — the custom long-term format
+
+The `aahl` crate (`aahl/`) is the content-addressed archive format for
+long-term preservation. The crawler can produce AAHL snapshots instead of
+bundles (`AH_APP__CRAWLER_FORMAT=aahl`):
+
+- **Content-defined chunking** (buzhash) splits files into variable-size
+  chunks; each chunk is SHA-256-addressed. Identical chunks — across files,
+  across repositories, across snapshots — are stored once.
+- **Incremental snapshots** link a manifest to its `parent`, so a re-crawl
+  only adds changed chunks.
+- **Zstandard compression** per chunk, with the digest computed over the
+  *uncompressed* bytes so dedup is independent of encoding.
+- **Small manifests**: a snapshot is a versioned, checksummed JSON index of
+  entries + chunk digests; the checksum stored in `archives.checksum` is the
+  manifest digest, and the manifest blob itself lives at
+  `archives/{repo_id}/{archive_id}.aahl`.
+- **Verify before trusting, again**: `aahl::decode::read_file` re-hashes every
+  chunk against the manifest before emitting bytes; `aahl::decode::extract`
+  reconstructs the full tree.
+- Chunks persist through the same `Storage` abstraction via
+  `salsyx_api::aahl::StorageChunkStore` under the `aahl/{digest}` key
+  namespace, so local dev and R2 use identical code.
+
+Both formats are browsable through the same API: `/archive/{id}/tree` serves
+the preserved listing and `/archive/{id}/blob` streams any file. For AAHL
+archives those routes decode straight from the manifest + chunk store.
+
+### External archive chain
+
+When GitHub returns 404 for a repository, the resolver now walks a chain of
+external preservation providers (`backend/src/providers/`) behind a common
+`ArchiveProvider` trait:
+
+| Provider                | What it provides                                   | Config key            |
+| ----------------------- | -------------------------------------------------- | --------------------- |
+| **Software Heritage**   | origin/visit + snapshot metadata, status + commit  | `software_heritage`   |
+| **Wayback Machine**     | archived snapshots of the GitHub repo page         | `wayback`             |
+| **Archive.org**         | item lookup (metadata + download count)            | `archive_org`         |
+
+Providers are consulted in order, best-effort: a provider failure is logged
+and the chain continues. Individual providers can be disabled with
+`AH_PROVIDERS__DISABLED=["archive_org", ...]`. Results are folded into the
+repo response as `external_archives` so the frontend can link users out to a
+recovery copy when Salsyx has not archived the repo itself.
+
 ---
 
 ## 6. Search engine
