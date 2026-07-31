@@ -234,8 +234,8 @@ pub async fn tree(
     }
 
     let stored = crate::db::archive_tree(&state.pool, id).await?;
-    let entries: Vec<crate::git::TreeEntry> = serde_json::from_value(stored.clone())
-        .unwrap_or_default();
+    let entries: Vec<crate::git::TreeEntry> =
+        serde_json::from_value(stored.clone()).unwrap_or_default();
     let mut regenerated = false;
 
     let entries = if entries.is_empty() {
@@ -249,11 +249,10 @@ pub async fn tree(
             .map_err(|e| crate::error::AppError::Internal(anyhow::anyhow!("{e}")))?;
 
         let bytes = blob.bytes.clone();
-        let entries =
-            tokio::task::spawn_blocking(move || crate::git::list_bundle_tree(&bytes))
-                .await
-                .map_err(|e| crate::error::AppError::Internal(anyhow::anyhow!("{e}")))?
-                .map_err(crate::error::AppError::Internal)?;
+        let entries = tokio::task::spawn_blocking(move || crate::git::list_bundle_tree(&bytes))
+            .await
+            .map_err(|e| crate::error::AppError::Internal(anyhow::anyhow!("{e}")))?
+            .map_err(crate::error::AppError::Internal)?;
 
         let value = serde_json::to_value(&entries)
             .map_err(|e| crate::error::AppError::Internal(anyhow::anyhow!("{e}")))?;
@@ -309,7 +308,9 @@ pub async fn blob(
 
     let repo = crate::db::find_repository_by_id(&state.pool, row.repository_id)
         .await?
-        .ok_or_else(|| crate::error::AppError::Internal(anyhow::anyhow!("archive owner missing")))?;
+        .ok_or_else(|| {
+            crate::error::AppError::Internal(anyhow::anyhow!("archive owner missing"))
+        })?;
 
     let branch = repo.default_branch.as_deref();
 

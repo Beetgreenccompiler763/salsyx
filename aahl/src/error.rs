@@ -13,6 +13,8 @@ pub enum AahlError {
     },
     #[error("chunk not found in store: {0}")]
     ChunkNotFound(String),
+    #[error("store transport error: {0}")]
+    Store(String),
     #[error("chunk checksum mismatch for {hash}: expected {expected}, got {actual}")]
     ChunkChecksumMismatch {
         hash: String,

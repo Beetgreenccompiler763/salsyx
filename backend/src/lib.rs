@@ -3,6 +3,7 @@
 //! Exposes the application as a library so integration tests can spin up
 //! routers without spawning a process. `main.rs` is a thin bootstrap layer.
 
+pub mod aahl;
 pub mod config;
 pub mod db;
 pub mod error;

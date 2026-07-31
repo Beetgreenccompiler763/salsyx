@@ -2,6 +2,8 @@
 env = "development"
 allow_public_archive_requests = true
 refresh_ttl_secs = 3600
+# Archive format produced by the crawler: "git_bundle" or "aahl".
+crawler_format = "git_bundle"
 
 [server]
 host = "127.0.0.1"

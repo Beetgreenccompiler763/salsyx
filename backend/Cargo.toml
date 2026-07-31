@@ -12,6 +12,7 @@ path = "src/main.rs"
 
 [dependencies]
 salsyx-shared = { path = "../shared" }
+aahl.workspace = true
 
 axum.workspace = true
 tokio.workspace = true

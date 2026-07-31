@@ -17,10 +17,11 @@ async fn main() -> anyhow::Result<()> {
 
     let config = Config::load()?;
     init_tracing(&config.app.env);
+    let format = config.app.crawler_format.clone();
 
     info!(
         version = env!("CARGO_PKG_VERSION"),
-        "starting salsyx-crawler"
+        format, "starting salsyx-crawler"
     );
 
     let pool = salsyx_api::db::connect(&config.database).await?;
@@ -38,8 +39,9 @@ async fn main() -> anyhow::Result<()> {
     for i in 0..concurrency {
         let pool = pool.clone();
         let storage = storage.clone();
+        let format = format.clone();
         handles.push(tokio::spawn(async move {
-            worker_loop(i, pool, storage.as_ref()).await;
+            worker_loop(i, pool, storage.as_ref(), &format).await;
         }));
     }
 
@@ -51,14 +53,19 @@ async fn main() -> anyhow::Result<()> {
 }
 
 /// Infinite worker loop: claim a job, execute it, retry with backoff.
-async fn worker_loop(id: usize, pool: PgPool, storage: &dyn salsyx_api::storage::Storage) {
+async fn worker_loop(
+    id: usize,
+    pool: PgPool,
+    storage: &dyn salsyx_api::storage::Storage,
+    format: &str,
+) {
     info!(worker = id, "worker online");
 
     loop {
         match jobs::claim_job(&pool).await {
             Ok(Some(job)) => {
                 info!(worker = id, job_id = %job.id, job_type = %job.job_type, "processing job");
-                let result = execute_job(&pool, storage, &job).await;
+                let result = execute_job(&pool, storage, format, &job).await;
                 match result {
                     Ok(()) => {
                         if let Err(e) = jobs::complete_job(&pool, job.id).await {
@@ -89,6 +96,7 @@ async fn worker_loop(id: usize, pool: PgPool, storage: &dyn salsyx_api::storage:
 async fn execute_job(
     pool: &PgPool,
     storage: &dyn salsyx_api::storage::Storage,
+    format: &str,
     job: &jobs::CrawlJob,
 ) -> anyhow::Result<()> {
     match job.job_type.as_str() {
@@ -103,7 +111,7 @@ async fn execute_job(
                 .bind(repo_id)
                 .fetch_one(pool)
                 .await?;
-            pipeline::archive_repository(pool, storage, archive_id, &row.0, repo_id).await
+            pipeline::archive_repository(pool, storage, archive_id, &row.0, repo_id, format).await
         }
         other => Err(anyhow::anyhow!("unknown job type: {other}")),
     }

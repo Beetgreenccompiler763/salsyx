@@ -61,9 +61,7 @@ pub async fn get_readme(
             }))
         }
         Err(crate::github::GithubError::NotFound) => Err(AppError::NotFound { full_name }),
-        Err(crate::github::GithubError::RateLimited) => {
-            Err(AppError::RateLimited)
-        }
+        Err(crate::github::GithubError::RateLimited) => Err(AppError::RateLimited),
         Err(e) => Err(AppError::Upstream(e.to_string())),
     }
 }

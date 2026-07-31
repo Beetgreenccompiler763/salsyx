@@ -602,15 +602,11 @@ pub async fn set_archive_tree(
 }
 
 /// Fetch the stored file-tree snapshot for an archive.
-pub async fn archive_tree(
-    pool: &PgPool,
-    archive_id: Uuid,
-) -> Result<serde_json::Value, AppError> {
-    let row: (serde_json::Value,) =
-        sqlx::query_as("SELECT file_tree FROM archives WHERE id = $1")
-            .bind(archive_id)
-            .fetch_one(pool)
-            .await?;
+pub async fn archive_tree(pool: &PgPool, archive_id: Uuid) -> Result<serde_json::Value, AppError> {
+    let row: (serde_json::Value,) = sqlx::query_as("SELECT file_tree FROM archives WHERE id = $1")
+        .bind(archive_id)
+        .fetch_one(pool)
+        .await?;
 
     Ok(row.0)
 }
@@ -679,16 +675,12 @@ pub async fn upsert_readme(
 }
 
 /// Fetch the stored README text for a repository, if any.
-pub async fn find_readme(
-    pool: &PgPool,
-    repository_id: Uuid,
-) -> Result<Option<String>, AppError> {
-    let row: Option<(String,)> = sqlx::query_as(
-        "SELECT readme FROM repo_documents WHERE repository_id = $1",
-    )
-    .bind(repository_id)
-    .fetch_optional(pool)
-    .await?;
+pub async fn find_readme(pool: &PgPool, repository_id: Uuid) -> Result<Option<String>, AppError> {
+    let row: Option<(String,)> =
+        sqlx::query_as("SELECT readme FROM repo_documents WHERE repository_id = $1")
+            .bind(repository_id)
+            .fetch_optional(pool)
+            .await?;
 
     Ok(row.map(|r| r.0))
 }

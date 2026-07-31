@@ -129,10 +129,7 @@ pub async fn search(
         (rows, total)
     };
 
-    let items = rows
-        .into_iter()
-        .map(to_search_item)
-        .collect();
+    let items = rows.into_iter().map(to_search_item).collect();
 
     Ok(Json(SearchResponse {
         total,

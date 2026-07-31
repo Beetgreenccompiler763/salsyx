@@ -10,12 +10,7 @@
 //! same durable work the API's `POST /archive` and `POST /refresh` do — no
 //! new worker plumbing required.
 
-use axum::{
-    body::Bytes,
-    extract::State,
-    http::HeaderMap,
-    Json,
-};
+use axum::{body::Bytes, extract::State, http::HeaderMap, Json};
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
@@ -90,9 +85,7 @@ pub async fn webhook(
         .unwrap_or("unknown")
         .to_string();
 
-    let signature = headers
-        .get(SIGNATURE_HEADER)
-        .and_then(|v| v.to_str().ok());
+    let signature = headers.get(SIGNATURE_HEADER).and_then(|v| v.to_str().ok());
 
     // Enforce the signature whenever a secret is configured.
     if let Some(secret) = state
@@ -144,7 +137,10 @@ mod tests {
     fn sign(secret: &str, body: &[u8]) -> String {
         let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).unwrap();
         mac.update(body);
-        format!("sha256={}", mac.finalize().into_bytes().encode_hex::<String>())
+        format!(
+            "sha256={}",
+            mac.finalize().into_bytes().encode_hex::<String>()
+        )
     }
 
     #[test]

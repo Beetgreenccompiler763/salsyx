@@ -108,6 +108,14 @@ pub struct AppConfig {
     /// Seconds after which a repository refresh is considered stale and
     /// should be re-checked.
     pub refresh_ttl_secs: i64,
+    /// Archive format produced by the crawler: `git_bundle` (default) or
+    /// `aahl` (AAHL content-addressed snapshots).
+    #[serde(default = "default_crawler_format")]
+    pub crawler_format: String,
+}
+
+fn default_crawler_format() -> String {
+    "git_bundle".to_string()
 }
 
 impl Config {

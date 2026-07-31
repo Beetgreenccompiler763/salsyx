@@ -237,8 +237,7 @@ impl GithubClient {
         query: &str,
         per_page: i64,
     ) -> Result<Vec<GithubRepo>, GithubError> {
-        let encoded =
-            url::form_urlencoded::byte_serialize(query.as_bytes()).collect::<String>();
+        let encoded = url::form_urlencoded::byte_serialize(query.as_bytes()).collect::<String>();
         let url = self.endpoint(&format!(
             "/search/repositories?q={encoded}&per_page={per_page}"
         ));
@@ -257,9 +256,7 @@ impl GithubClient {
                 let body: SearchResponse = resp.json().await?;
                 Ok(body.items)
             }
-            StatusCode::FORBIDDEN | StatusCode::TOO_MANY_REQUESTS => {
-                Err(GithubError::RateLimited)
-            }
+            StatusCode::FORBIDDEN | StatusCode::TOO_MANY_REQUESTS => Err(GithubError::RateLimited),
             status => Err(GithubError::Upstream(format!("unexpected status {status}"))),
         }
     }
@@ -273,9 +270,7 @@ impl GithubClient {
         match resp.status() {
             StatusCode::OK => Ok(resp.json().await?),
             StatusCode::NOT_FOUND => Err(GithubError::NotFound),
-            StatusCode::FORBIDDEN | StatusCode::TOO_MANY_REQUESTS => {
-                Err(GithubError::RateLimited)
-            }
+            StatusCode::FORBIDDEN | StatusCode::TOO_MANY_REQUESTS => Err(GithubError::RateLimited),
             status => Err(GithubError::Upstream(format!("unexpected status {status}"))),
         }
     }
@@ -298,9 +293,7 @@ impl GithubClient {
         match resp.status() {
             StatusCode::OK => Ok(resp.json().await?),
             StatusCode::NOT_FOUND => Err(GithubError::NotFound),
-            StatusCode::FORBIDDEN | StatusCode::TOO_MANY_REQUESTS => {
-                Err(GithubError::RateLimited)
-            }
+            StatusCode::FORBIDDEN | StatusCode::TOO_MANY_REQUESTS => Err(GithubError::RateLimited),
             status => Err(GithubError::Upstream(format!("unexpected status {status}"))),
         }
     }
@@ -333,9 +326,7 @@ impl GithubClient {
                 })
             }
             StatusCode::NOT_FOUND => Err(GithubError::NotFound),
-            StatusCode::FORBIDDEN | StatusCode::TOO_MANY_REQUESTS => {
-                Err(GithubError::RateLimited)
-            }
+            StatusCode::FORBIDDEN | StatusCode::TOO_MANY_REQUESTS => Err(GithubError::RateLimited),
             status => Err(GithubError::Upstream(format!("unexpected status {status}"))),
         }
     }
@@ -355,7 +346,10 @@ impl GithubClient {
             "/repos/{full_name}/contents/{}?{}",
             url::form_urlencoded::byte_serialize(path.as_bytes()).collect::<String>(),
             branch
-                .map(|b| format!("ref={}", url::form_urlencoded::byte_serialize(b.as_bytes()).collect::<String>()))
+                .map(|b| format!(
+                    "ref={}",
+                    url::form_urlencoded::byte_serialize(b.as_bytes()).collect::<String>()
+                ))
                 .unwrap_or_default()
         ));
 
@@ -382,9 +376,7 @@ impl GithubClient {
                 Ok(None)
             }
             StatusCode::NOT_FOUND => Ok(None),
-            StatusCode::FORBIDDEN | StatusCode::TOO_MANY_REQUESTS => {
-                Err(GithubError::RateLimited)
-            }
+            StatusCode::FORBIDDEN | StatusCode::TOO_MANY_REQUESTS => Err(GithubError::RateLimited),
             _ => Err(GithubError::Upstream(format!(
                 "unexpected status {}",
                 resp.status()

@@ -51,7 +51,11 @@ pub async fn get_owner(
     State(state): State<AppState>,
     Path(login): Path<String>,
 ) -> Result<Json<OwnerResponse>, AppError> {
-    if login.is_empty() || login.chars().any(|c| !(c.is_alphanumeric() || c == '-' || c == '_')) {
+    if login.is_empty()
+        || login
+            .chars()
+            .any(|c| !(c.is_alphanumeric() || c == '-' || c == '_'))
+    {
         return Err(AppError::Validation("invalid owner login".into()));
     }
 
@@ -68,7 +72,11 @@ pub async fn get_owner(
 
     // Pinned repos (GraphQL; empty when running anonymously). Fall back to
     // the most-starred repos so the modal is never empty.
-    let pinned = state.github.get_pinned_repos(&user.login).await.unwrap_or_default();
+    let pinned = state
+        .github
+        .get_pinned_repos(&user.login)
+        .await
+        .unwrap_or_default();
 
     let repos = state
         .github

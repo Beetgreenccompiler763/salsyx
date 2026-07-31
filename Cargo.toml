@@ -60,6 +60,7 @@ async-channel = "2"
 
 # Salsyx internal crates
 salsyx-shared = { path = "shared" }
+aahl = { path = "aahl" }
 
 [profile.release]
 opt-level = 3

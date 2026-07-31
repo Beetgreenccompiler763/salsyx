@@ -13,6 +13,7 @@ path = "src/main.rs"
 [dependencies]
 salsyx-shared = { path = "../shared" }
 salsyx-api = { path = "../backend" }
+aahl.workspace = true
 
 tokio.workspace = true
 sqlx.workspace = true

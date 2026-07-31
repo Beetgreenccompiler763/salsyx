@@ -80,11 +80,7 @@ pub fn list_bundle_tree(bundle_bytes: &[u8]) -> anyhow::Result<Vec<TreeEntry>> {
                     "tree" => "tree".to_string(),
                     _ => "other".to_string(),
                 },
-                size: size_str
-                    .trim()
-                    .parse::<i64>()
-                    .ok()
-                    .filter(|s| *s >= 0),
+                size: size_str.trim().parse::<i64>().ok().filter(|s| *s >= 0),
             });
         }
 
