@@ -135,3 +135,48 @@ pub async fn webhook(
         scheduled,
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use hex::ToHex;
+
+    fn sign(secret: &str, body: &[u8]) -> String {
+        let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).unwrap();
+        mac.update(body);
+        format!("sha256={}", mac.finalize().into_bytes().encode_hex::<String>())
+    }
+
+    #[test]
+    fn signature_verifies_with_correct_hmac() {
+        let secret = "s3cr3t";
+        let body = br#"{"repository":{"full_name":"octocat/Hello-World"}}"#;
+        let sig = sign(secret, body);
+        assert!(verify_signature(secret, body, Some(&sig)));
+    }
+
+    #[test]
+    fn signature_rejects_missing_or_malformed_header() {
+        let secret = "s3cr3t";
+        let body = b"{}";
+        assert!(!verify_signature(secret, body, None));
+        assert!(!verify_signature(secret, body, Some("sha1=abc")));
+        assert!(!verify_signature(secret, body, Some("garbage")));
+    }
+
+    #[test]
+    fn signature_rejects_wrong_key_or_tampered_body() {
+        let secret = "s3cr3t";
+        let body = b"payload";
+        let sig = sign(secret, body);
+        assert!(!verify_signature("other", body, Some(&sig)));
+        assert!(!verify_signature(secret, b"tampered", Some(&sig)));
+    }
+
+    #[test]
+    fn constant_time_eq_has_no_len_short_circuit_and_matches() {
+        assert!(constant_time_eq(b"abc", b"abc"));
+        assert!(!constant_time_eq(b"abc", b"abd"));
+        assert!(!constant_time_eq(b"abc", b"ab"));
+    }
+}
