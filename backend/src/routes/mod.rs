@@ -25,9 +25,12 @@ use crate::state::AppState;
 
 pub mod archive;
 pub mod health;
+pub mod owner;
+pub mod readme;
 pub mod repo;
 pub mod search;
 pub mod stats;
+pub mod webhook;
 
 /// Build the API router.
 pub fn build(_config: &Config, state: AppState) -> Router {
@@ -35,17 +38,29 @@ pub fn build(_config: &Config, state: AppState) -> Router {
         .route("/health", get(health::health))
         .route("/search", get(search::search))
         .route("/repo/{owner}/{repo}", get(repo::resolve))
+        .route("/repo/{owner}/{repo}/readme", get(readme::get_readme))
+        .route("/repo/{owner}/{repo}/archives", get(repo::history))
+        .route("/owner/{login}", get(owner::get_owner))
         .route("/archive/{id}", get(archive::get_archive))
+        .route("/archive/{id}/tree", get(archive::tree))
+        .route("/archive/{id}/blob", get(archive::blob))
         .route("/download/{id}", get(archive::download))
         .route("/stats", get(stats::stats))
         .route("/stats/top", get(stats::top))
         .route("/archive", post(archive::create_archive))
         .route("/refresh", post(repo::refresh))
+        .with_state(state.clone());
+
+    // GitHub webhook lives outside `/api/v1` so repo admins can point the
+    // GitHub integration straight at the base URL.
+    let webhook = Router::new()
+        .route("/webhook/github", post(webhook::webhook))
         .with_state(state);
 
     // Serve the OpenAPI document at a stable path.
     Router::new()
         .nest("/api/v1", api)
+        .merge(webhook)
         .route(
             "/openapi.json",
             get(|| async {

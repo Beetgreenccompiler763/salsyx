@@ -105,3 +105,71 @@ pub async fn refresh(
         archive_id,
     }))
 }
+
+#[derive(Debug, Serialize)]
+pub struct HistoryResponse {
+    pub full_name: String,
+    pub status: &'static str,
+    /// All archives for the repository, newest first. Only `archived` records
+    /// are usable for browsing/downloading.
+    pub archives: Vec<HistoryArchive>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct HistoryArchive {
+    pub id: Uuid,
+    pub commit_ref: Option<String>,
+    pub commit_count: Option<i64>,
+    pub checksum: String,
+    pub size_bytes: i64,
+    pub compression: String,
+    pub status: String,
+    pub archived_at: String,
+    pub error_message: Option<String>,
+    pub download_url: String,
+}
+
+/// `GET /api/v1/repo/{owner}/{repo}/archives` — archive history for a repo.
+pub async fn history(
+    State(state): State<AppState>,
+    Path((owner, repo)): Path<(String, String)>,
+) -> Result<Json<HistoryResponse>, crate::error::AppError> {
+    let full_name = format!("{owner}/{repo}");
+    let normalized = crate::service::normalize_full_name_public(&full_name)?;
+
+    let row = crate::db::find_repository(&state.pool, &normalized)
+        .await?
+        .ok_or_else(|| crate::error::AppError::NotFound {
+            full_name: normalized.clone(),
+        })?;
+
+    let archives = crate::db::list_archives(&state.pool, row.id, 50).await?;
+
+    let mut items = Vec::with_capacity(archives.len());
+    for a in archives {
+        let download_url = state
+            .storage
+            .public_url(&a.storage_key)
+            .await
+            .unwrap_or_else(|| format!("/api/v1/download/{}", a.id));
+
+        items.push(HistoryArchive {
+            id: a.id,
+            commit_ref: a.commit_ref,
+            commit_count: a.commit_count,
+            checksum: a.checksum,
+            size_bytes: a.size_bytes,
+            compression: a.compression_method,
+            status: a.status,
+            archived_at: a.archived_at.to_rfc3339(),
+            error_message: a.error_message,
+            download_url,
+        });
+    }
+
+    Ok(Json(HistoryResponse {
+        full_name: row.full_name,
+        status: if row.is_deleted { "deleted" } else { "live" },
+        archives: items,
+    }))
+}

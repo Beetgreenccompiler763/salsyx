@@ -78,23 +78,42 @@ pub async fn search(
         .map(str::to_string)
         .collect();
 
-    let (rows, total) = crate::db::search_repositories(
-        &state.pool,
-        &q,
-        params.mode.as_deref().unwrap_or("partial"),
-        params.owner.as_deref(),
-        params.language.as_deref(),
-        params.license.as_deref(),
-        &topics,
-        params.min_stars,
-        params.include_deleted.unwrap_or(false),
-        params.archived_only.unwrap_or(false),
-        params.sort.as_deref().unwrap_or("relevance"),
-        params.order.as_deref().unwrap_or("desc"),
-        page,
-        per_page,
-    )
-    .await?;
+    let mode = params.mode.as_deref().unwrap_or("partial");
+
+    // `full_text` matches against preserved READMEs + descriptions via the
+    // `repo_documents` search vector (migration 0003).
+    let (rows, total) = if mode == "full_text" && !q.is_empty() {
+        crate::db::search_repositories_fulltext(
+            &state.pool,
+            &q,
+            params.owner.as_deref(),
+            params.language.as_deref(),
+            params.min_stars,
+            params.include_deleted.unwrap_or(false),
+            params.archived_only.unwrap_or(false),
+            page,
+            per_page,
+        )
+        .await?
+    } else {
+        crate::db::search_repositories(
+            &state.pool,
+            &q,
+            mode,
+            params.owner.as_deref(),
+            params.language.as_deref(),
+            params.license.as_deref(),
+            &topics,
+            params.min_stars,
+            params.include_deleted.unwrap_or(false),
+            params.archived_only.unwrap_or(false),
+            params.sort.as_deref().unwrap_or("relevance"),
+            params.order.as_deref().unwrap_or("desc"),
+            page,
+            per_page,
+        )
+        .await?
+    };
 
     let items = rows
         .into_iter()

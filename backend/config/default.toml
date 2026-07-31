@@ -21,6 +21,7 @@ base_url = "https://api.github.com"
 token = ""
 user_agent = "salsyx/0.1 (nothing-open-source-should-disappear)"
 timeout_secs = 15
+webhook_secret = ""
 
 [storage]
 provider = "local"

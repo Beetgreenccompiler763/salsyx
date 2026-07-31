@@ -369,10 +369,14 @@ pub async fn upsert_repository(
 }
 
 /// Mark a repository as deleted (GitHub now returns 404).
+///
+/// Alias-aware: the requested name may be the old name of a renamed repo, so
+/// we also mark the canonical row referenced by any matching alias.
 pub async fn mark_repository_deleted(pool: &PgPool, full_name: &str) -> Result<(), AppError> {
     sqlx::query(
         "UPDATE repositories SET is_deleted = true, deleted_at = now(), updated_at = now()
-         WHERE full_name = $1",
+         WHERE full_name = $1
+            OR id IN (SELECT repository_id FROM repository_aliases WHERE full_name = $1)",
     )
     .bind(full_name)
     .execute(pool)
@@ -382,7 +386,33 @@ pub async fn mark_repository_deleted(pool: &PgPool, full_name: &str) -> Result<(
 }
 
 /// Look up a repository by full name, with its owner attached.
+///
+/// Rename-aware: if the exact `full_name` is not found, we consult the
+/// `repository_aliases` table (populated when GitHub silently redirects a
+/// renamed repo) so an old `owner/name` still resolves — even after the
+/// repository has been deleted from GitHub.
 pub async fn find_repository(
+    pool: &PgPool,
+    full_name: &str,
+) -> Result<Option<RepoWithOwnerRow>, AppError> {
+    if let Some(row) = fetch_repo_with_owner_by_full_name(pool, full_name).await? {
+        return Ok(Some(row));
+    }
+
+    // Alias fallback: requested name is an old name for a renamed repo.
+    let repo_id: Option<(Uuid,)> =
+        sqlx::query_as("SELECT repository_id FROM repository_aliases WHERE full_name = $1")
+            .bind(full_name)
+            .fetch_optional(pool)
+            .await?;
+
+    match repo_id {
+        Some((id,)) => fetch_repo_with_owner_by_id(pool, id).await,
+        None => Ok(None),
+    }
+}
+
+async fn fetch_repo_with_owner_by_full_name(
     pool: &PgPool,
     full_name: &str,
 ) -> Result<Option<RepoWithOwnerRow>, AppError> {
@@ -411,6 +441,108 @@ pub async fn find_repository(
     Ok(row)
 }
 
+/// Fetch a repository + owner by its primary key.
+pub async fn find_repository_by_id(
+    pool: &PgPool,
+    id: Uuid,
+) -> Result<Option<RepoWithOwnerRow>, AppError> {
+    fetch_repo_with_owner_by_id(pool, id).await
+}
+
+async fn fetch_repo_with_owner_by_id(
+    pool: &PgPool,
+    id: Uuid,
+) -> Result<Option<RepoWithOwnerRow>, AppError> {
+    let row = sqlx::query_as::<_, RepoWithOwnerRow>(
+        r#"
+        SELECT
+            r.id, r.github_id, r.name, r.full_name, r.description, r.homepage,
+            r.default_branch, r.language, r.license, r.topics, r.stars_count,
+            r.forks_count, r.watchers_count, r.open_issues_count, r.commit_count,
+            r.size_bytes, r.source, r.visibility, r.is_github_archived,
+            r.is_deleted, r.deleted_at, r.pushed_at, r.github_created_at,
+            r.last_checked_at, r.created_at, r.updated_at,
+            o.id AS owner_id, o.github_id AS owner_github_id, o.login AS owner_login,
+            o.name AS owner_name, o.avatar_url AS owner_avatar_url,
+            o.bio AS owner_bio, o.owner_type, o.created_at AS owner_created_at,
+            o.updated_at AS owner_updated_at
+        FROM repositories r
+        JOIN owners o ON o.id = r.owner_id
+        WHERE r.id = $1
+        "#,
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(row)
+}
+
+/// Record that `full_name` was observed as an alias (old name) of a repo.
+pub async fn upsert_repository_alias(
+    pool: &PgPool,
+    full_name: &str,
+    repository_id: Uuid,
+) -> Result<(), AppError> {
+    sqlx::query(
+        "INSERT INTO repository_aliases (full_name, repository_id)
+         VALUES ($1, $2)
+         ON CONFLICT (full_name) DO UPDATE SET repository_id = EXCLUDED.repository_id",
+    )
+    .bind(full_name)
+    .bind(repository_id)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+/// Look up an owner row by login.
+pub async fn find_owner(pool: &PgPool, login: &str) -> Result<Option<OwnerRow>, AppError> {
+    let row = sqlx::query_as::<_, OwnerRow>("SELECT * FROM owners WHERE login = $1")
+        .bind(login)
+        .fetch_optional(pool)
+        .await?;
+
+    Ok(row)
+}
+
+/// Upsert an owner from a GitHub user/org profile payload.
+pub async fn upsert_owner_from_github_user(
+    pool: &PgPool,
+    user: &crate::github::GithubUser,
+) -> Result<Uuid, AppError> {
+    let id = Uuid::new_v4();
+    let owner_type = if user.user_type.eq_ignore_ascii_case("Organization") {
+        "organization"
+    } else {
+        "user"
+    };
+    let row: (Uuid,) = sqlx::query_as(
+        "INSERT INTO owners (id, github_id, login, name, avatar_url, bio, owner_type)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (github_id) DO UPDATE SET
+            login = EXCLUDED.login,
+            name = COALESCE(EXCLUDED.name, owners.name),
+            avatar_url = COALESCE(EXCLUDED.avatar_url, owners.avatar_url),
+            bio = COALESCE(EXCLUDED.bio, owners.bio),
+            owner_type = EXCLUDED.owner_type,
+            updated_at = now()
+         RETURNING id",
+    )
+    .bind(id)
+    .bind(user.id)
+    .bind(&user.login)
+    .bind(&user.name)
+    .bind(&user.avatar_url)
+    .bind(&user.bio)
+    .bind(owner_type)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(row.0)
+}
+
 /// Get the most recent successful archive for a repository.
 pub async fn latest_archive(
     pool: &PgPool,
@@ -429,6 +561,136 @@ pub async fn latest_archive(
     .await?;
 
     Ok(row)
+}
+
+/// List all archives for a repository (newest first) — powers the archive
+/// history feature.
+pub async fn list_archives(
+    pool: &PgPool,
+    repository_id: Uuid,
+    limit: i64,
+) -> Result<Vec<ArchiveRow>, AppError> {
+    let rows = sqlx::query_as::<_, ArchiveRow>(
+        r#"
+        SELECT * FROM archives
+        WHERE repository_id = $1
+        ORDER BY archived_at DESC
+        LIMIT $2
+        "#,
+    )
+    .bind(repository_id)
+    .bind(limit)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows)
+}
+
+/// Store the file-tree snapshot captured at archive time.
+pub async fn set_archive_tree(
+    pool: &PgPool,
+    archive_id: Uuid,
+    tree: &serde_json::Value,
+) -> Result<(), AppError> {
+    sqlx::query("UPDATE archives SET file_tree = $2, updated_at = now() WHERE id = $1")
+        .bind(archive_id)
+        .bind(tree)
+        .execute(pool)
+        .await?;
+
+    Ok(())
+}
+
+/// Fetch the stored file-tree snapshot for an archive.
+pub async fn archive_tree(
+    pool: &PgPool,
+    archive_id: Uuid,
+) -> Result<serde_json::Value, AppError> {
+    let row: (serde_json::Value,) =
+        sqlx::query_as("SELECT file_tree FROM archives WHERE id = $1")
+            .bind(archive_id)
+            .fetch_one(pool)
+            .await?;
+
+    Ok(row.0)
+}
+
+/// Number of this owner's repositories that Salsyx has preserved.
+pub async fn count_archived_for_owner(pool: &PgPool, owner_id: Uuid) -> Result<i64, AppError> {
+    let row: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM repositories r
+         WHERE r.owner_id = $1
+           AND EXISTS (SELECT 1 FROM archives a
+                       WHERE a.repository_id = r.id AND a.status = 'archived')",
+    )
+    .bind(owner_id)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(row.0)
+}
+
+// ---------------------------------------------------------------------------
+// Queries — README / repo documents
+// ---------------------------------------------------------------------------
+
+/// Store the extracted README for a repository, rebuilding the search
+/// document (readme + description) so full-text search stays fresh.
+pub async fn upsert_readme(
+    pool: &PgPool,
+    repository_id: Uuid,
+    readme: &str,
+) -> Result<(), AppError> {
+    let description: Option<(Option<String>, Vec<String>)> =
+        sqlx::query_as("SELECT description, topics FROM repositories WHERE id = $1")
+            .bind(repository_id)
+            .fetch_optional(pool)
+            .await?;
+
+    let document = match description {
+        Some((desc, topics)) => {
+            let mut parts = topics;
+            if let Some(desc) = desc {
+                parts.push(desc);
+            }
+            parts.push(readme.to_string());
+            parts.join("\n\n")
+        }
+        None => readme.to_string(),
+    };
+
+    sqlx::query(
+        r#"
+        INSERT INTO repo_documents (repository_id, readme, document)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (repository_id) DO UPDATE SET
+            readme = EXCLUDED.readme,
+            document = EXCLUDED.document,
+            updated_at = now()
+        "#,
+    )
+    .bind(repository_id)
+    .bind(readme)
+    .bind(document)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+/// Fetch the stored README text for a repository, if any.
+pub async fn find_readme(
+    pool: &PgPool,
+    repository_id: Uuid,
+) -> Result<Option<String>, AppError> {
+    let row: Option<(String,)> = sqlx::query_as(
+        "SELECT readme FROM repo_documents WHERE repository_id = $1",
+    )
+    .bind(repository_id)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(row.map(|r| r.0))
 }
 
 /// Insert a new archive record (status `pending`).
@@ -686,6 +948,94 @@ pub async fn search_repositories(
     })
     .bind(min_stars)
     .bind(include_deleted)
+    .fetch_one(pool)
+    .await?;
+
+    Ok((rows, count.0.max(0) as u64))
+}
+
+/// Full-text search over READMEs + descriptions via the `repo_documents`
+/// search vector (see migration 0003). Supports the same filters/sorting as
+/// `search_repositories` but matches document contents.
+#[allow(clippy::too_many_arguments)]
+pub async fn search_repositories_fulltext(
+    pool: &PgPool,
+    q: &str,
+    owner: Option<&str>,
+    language: Option<&str>,
+    min_stars: Option<i64>,
+    include_deleted: bool,
+    include_archived_only: bool,
+    page: u64,
+    per_page: u64,
+) -> Result<(Vec<SearchHitRow>, u64), AppError> {
+    let offset = (page.saturating_sub(1)) * per_page;
+
+    let rows = sqlx::query_as::<_, SearchHitRow>(
+        r#"
+        WITH ranked AS (
+            SELECT
+                r.id, o.login AS owner_login, r.name, r.full_name,
+                r.description, r.language, r.license, r.topics,
+                r.stars_count, r.forks_count, r.is_deleted,
+                CASE WHEN a.id IS NOT NULL THEN true ELSE false END AS has_archive,
+                a.archived_at, r.last_checked_at,
+                'https://github.com/' || r.full_name AS html_url,
+                ts_rank_cd(d.search_vector, plainto_tsquery('simple', $1)) AS relevance
+            FROM repositories r
+            JOIN owners o ON o.id = r.owner_id
+            JOIN repo_documents d ON d.repository_id = r.id
+            LEFT JOIN LATERAL (
+                SELECT a.id, a.archived_at FROM archives a
+                WHERE a.repository_id = r.id AND a.status = 'archived'
+                ORDER BY a.archived_at DESC LIMIT 1
+            ) a ON true
+            WHERE d.search_vector @@ plainto_tsquery('simple', $1)
+              AND ($2 IS NULL OR o.login = $2)
+              AND ($3 IS NULL OR r.language = $3)
+              AND ($4 IS NULL OR r.stars_count >= $4)
+              AND ($5 = false OR r.is_deleted = true)
+              AND ($6 = false OR a.id IS NOT NULL)
+        )
+        SELECT * FROM ranked
+        ORDER BY relevance DESC
+        LIMIT $7 OFFSET $8
+        "#,
+    )
+    .bind(q)
+    .bind(owner)
+    .bind(language)
+    .bind(min_stars)
+    .bind(include_deleted)
+    .bind(include_archived_only)
+    .bind(per_page as i64)
+    .bind(offset as i64)
+    .fetch_all(pool)
+    .await?;
+
+    let count: (i64,) = sqlx::query_as(
+        r#"
+        SELECT COUNT(*)
+        FROM repositories r
+        JOIN owners o ON o.id = r.owner_id
+        JOIN repo_documents d ON d.repository_id = r.id
+        WHERE d.search_vector @@ plainto_tsquery('simple', $1)
+          AND ($2 IS NULL OR o.login = $2)
+          AND ($3 IS NULL OR r.language = $3)
+          AND ($4 IS NULL OR r.stars_count >= $4)
+          AND ($5 = false OR r.is_deleted = true)
+          AND ($6 = false OR EXISTS (
+              SELECT 1 FROM archives a
+              WHERE a.repository_id = r.id AND a.status = 'archived'
+          ))
+        "#,
+    )
+    .bind(q)
+    .bind(owner)
+    .bind(language)
+    .bind(min_stars)
+    .bind(include_deleted)
+    .bind(include_archived_only)
     .fetch_one(pool)
     .await?;
 

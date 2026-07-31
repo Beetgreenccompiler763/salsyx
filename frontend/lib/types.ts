@@ -128,6 +128,81 @@ export interface HealthResponse {
   uptime_secs: number;
 }
 
+export interface ReadmeResponse {
+  full_name: string;
+  readme: string;
+  source: "github" | "salsyx";
+  html_url?: string | null;
+}
+
+export interface PinnedRepo {
+  name: string;
+  full_name: string;
+  description?: string | null;
+  language?: string | null;
+  stars_count: number;
+}
+
+export interface OwnerTopRepo {
+  full_name: string;
+  name: string;
+  description?: string | null;
+  language?: string | null;
+  stars_count: number;
+  has_archive: boolean;
+}
+
+export interface OwnerResponse {
+  login: string;
+  name?: string | null;
+  avatar_url?: string | null;
+  bio?: string | null;
+  company?: string | null;
+  blog?: string | null;
+  location?: string | null;
+  twitter_username?: string | null;
+  owner_type: string;
+  followers: number;
+  following: number;
+  public_repos: number;
+  created_at?: string | null;
+  pinned_repos: PinnedRepo[];
+  top_repos: OwnerTopRepo[];
+  preserved_count: number;
+}
+
+export interface TreeEntry {
+  path: string;
+  type: "blob" | "tree" | "other";
+  size?: number | null;
+}
+
+export interface TreeResponse {
+  archive_id: string;
+  commit_ref?: string | null;
+  entries: TreeEntry[];
+  regenerated: boolean;
+}
+
+export interface HistoryArchive {
+  id: string;
+  commit_ref?: string | null;
+  commit_count?: number | null;
+  checksum: string;
+  size_bytes: number;
+  compression: string;
+  status: string;
+  archived_at: string;
+  error_message?: string | null;
+  download_url: string;
+}
+
+export interface HistoryResponse {
+  full_name: string;
+  status: "live" | "deleted";
+  archives: HistoryArchive[];
+}
+
 export interface ErrorBody {
   code: string;
   message: string;

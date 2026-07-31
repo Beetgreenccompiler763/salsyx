@@ -54,6 +54,23 @@ pub async fn archive_repository(
     let commit_ref = current_head(&repo_path)?;
     let commit_count = count_commits(&repo_path)?;
 
+    // Snapshot the file tree + README so the API can browse preserved
+    // contents without opening the bundle. Best-effort: never fails the job.
+    let tree_entries = list_tree(&repo_path).unwrap_or_default();
+    if !tree_entries.is_empty() {
+        let value = serde_json::Value::Array(tree_entries);
+        if let Err(e) = salsyx_api::db::set_archive_tree(pool, archive_id, &value).await {
+            tracing::warn!(archive_id = %archive_id, error = %e, "failed to store file tree");
+        }
+    }
+    if let Some(readme) = extract_readme(&repo_path) {
+        if !readme.trim().is_empty() {
+            if let Err(e) = salsyx_api::db::upsert_readme(pool, repo_id, &readme).await {
+                tracing::warn!(archive_id = %archive_id, error = %e, "failed to store readme");
+            }
+        }
+    }
+
     let bytes = std::fs::read(&bundle_path)?;
     let checksum = hex::encode(Sha256::digest(&bytes));
 
@@ -143,6 +160,105 @@ fn count_commits(repo_path: &Path) -> anyhow::Result<i64> {
             .unwrap_or(0))
     } else {
         Ok(0)
+    }
+}
+
+/// Recursive file listing of `HEAD` as JSON entries for the browsing API.
+///
+/// Line format: `<mode> SP <type> SP <object> TAB <size> TAB <path>`.
+/// Sizes come from the tree entries without fetching blob contents.
+fn list_tree(repo_path: &Path) -> anyhow::Result<Vec<serde_json::Value>> {
+    let out = Command::new("git")
+        .args(["ls-tree", "-r", "-l", "HEAD"])
+        .current_dir(repo_path)
+        .output()?;
+
+    if !out.status.success() {
+        return Ok(Vec::new());
+    }
+
+    let mut entries = Vec::new();
+    for line in String::from_utf8_lossy(&out.stdout).lines() {
+        let mut parts = line.splitn(4, ' ');
+        let _mode = parts.next();
+        let Some(kind) = parts.next() else { continue };
+        let _object = parts.next();
+        let Some(rest) = parts.next() else { continue };
+        let Some(tab) = rest.find('\t') else { continue };
+        let size_str = &rest[..tab];
+        let path = rest[tab + 1..].trim_end().to_string();
+        if path.is_empty() {
+            continue;
+        }
+        entries.push(serde_json::json!({
+            "path": path,
+            "type": match kind {
+                "blob" => "blob",
+                "tree" => "tree",
+                _ => "other",
+            },
+            "size": size_str.trim().parse::<i64>().ok().filter(|s| *s >= 0),
+        }));
+    }
+
+    Ok(entries)
+}
+
+/// Extract the default-branch README (best match) as markdown text.
+///
+/// Tries common README filenames in order; a bare-clone `git show` lazily
+/// fetches the blob from the still-live repository.
+fn extract_readme(repo_path: &Path) -> Option<String> {
+    const CANDIDATES: &[&str] = &[
+        "README.md",
+        "README.markdown",
+        "README.mkd",
+        "README.rst",
+        "README.txt",
+        "readme.md",
+        "README",
+        "README.adoc",
+        "README.org",
+    ];
+
+    for name in CANDIDATES {
+        let out = Command::new("git")
+            .args(["show", &format!("HEAD:{name}")])
+            .current_dir(repo_path)
+            .output()
+            .ok()?;
+        if out.status.success() {
+            let text = String::from_utf8_lossy(&out.stdout).to_string();
+            if !text.trim().is_empty() {
+                return Some(text);
+            }
+        }
+    }
+
+    // Fall back to a case-insensitive scan of the tree.
+    let tree = list_tree(repo_path).ok()?;
+    let readme = tree.into_iter().find(|e| {
+        e.get("path")
+            .and_then(|p| p.as_str())
+            .map(|p| {
+                p.split('/')
+                    .next_back()
+                    .map(|base| base.to_ascii_lowercase().starts_with("readme"))
+                    .unwrap_or(false)
+            })
+            .unwrap_or(false)
+    })?;
+    let path = readme.get("path")?.as_str()?;
+
+    let out = Command::new("git")
+        .args(["show", &format!("HEAD:{path}")])
+        .current_dir(repo_path)
+        .output()
+        .ok()?;
+    if out.status.success() {
+        Some(String::from_utf8_lossy(&out.stdout).to_string())
+    } else {
+        None
     }
 }
 

@@ -61,6 +61,9 @@ pub struct GithubConfig {
     pub user_agent: String,
     /// Request timeout in seconds.
     pub timeout_secs: u64,
+    /// Shared secret for verifying `X-Hub-Signature-256` on the GitHub
+    /// webhook endpoint. Empty/absent disables signature enforcement.
+    pub webhook_secret: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

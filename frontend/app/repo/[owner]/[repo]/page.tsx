@@ -29,6 +29,8 @@ import {
   formatNumber,
   type RepoResponse,
 } from "@/lib/types";
+import { ReadmePanel } from "@/components/repo/ReadmePanel";
+import { FileTree } from "@/components/repo/FileTree";
 
 export default function RepoPage() {
   const params = useParams<{ owner: string; repo: string }>();
@@ -269,6 +271,8 @@ function LiveView({
             </p>
             <ArchiveButton onClick={onRequestArchive} requesting={requesting} done={requestDone} />
           </div>
+
+          <ReadmePanel owner={r.owner.login} repo={r.name} />
         </div>
       </div>
     </motion.div>
@@ -354,6 +358,10 @@ function ArchivedView({ result }: { result: RepoResponse }) {
               { icon: HardDrive, label: "Archive size", value: formatBytes(a.size_bytes), color: "text-pink" },
             ]}
           />
+
+          <ReadmePanel owner={r.owner.login} repo={r.name} />
+
+          <FileTree archiveId={a.id} />
         </div>
       </div>
     </motion.div>

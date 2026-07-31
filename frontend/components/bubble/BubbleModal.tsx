@@ -15,9 +15,10 @@ import {
   Code2,
   Flame,
   Github,
+  Archive,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { formatNumber, type BubbleProfile, type SearchItem } from "@/lib/types";
+import { formatNumber, type BubbleProfile, type OwnerResponse, type SearchItem } from "@/lib/types";
 
 export function BubbleModal({
   profile,
@@ -28,17 +29,38 @@ export function BubbleModal({
 }) {
   const [repos, setRepos] = useState<SearchItem[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [ownerData, setOwnerData] = useState<OwnerResponse | null>(null);
 
   useEffect(() => {
     if (!profile) return;
     setRepos(null);
     setLoading(true);
+    setOwnerData(null);
     api
       .search({ owner: profile.login, per_page: 6 })
       .then((res) => setRepos(res.items.length ? res.items : null))
       .catch(() => setRepos(null))
       .finally(() => setLoading(false));
+
+    api
+      .owner(profile.login)
+      .then(setOwnerData)
+      .catch(() => setOwnerData(null));
   }, [profile]);
+
+  const displayName = ownerData?.name ?? profile?.name ?? profile?.login ?? "";
+  const displayBio = ownerData?.bio ?? profile?.bio;
+  const displayAvatar = ownerData?.avatar_url ?? profile?.avatar;
+  const followers = ownerData?.followers ?? 0;
+  const following = ownerData?.following ?? 0;
+  const repoCount = ownerData?.public_repos ?? profile?.repos ?? 0;
+  const preserved = ownerData?.preserved_count ?? 0;
+  const languages =
+    ownerData && ownerData.top_repos.length
+      ? Array.from(
+          new Set(ownerData.top_repos.map((r) => r.language).filter((l): l is string => Boolean(l))),
+        ).slice(0, 4)
+      : profile?.languages ?? [];
 
   return (
     <AnimatePresence>
@@ -67,7 +89,7 @@ export function BubbleModal({
                   <div className="grid size-16 place-items-center overflow-hidden rounded-full border border-edge bg-panel-2">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={profile.avatar}
+                      src={displayAvatar}
                       alt={profile.login}
                       className="size-full object-cover"
                       width={64}
@@ -79,7 +101,7 @@ export function BubbleModal({
                   </span>
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold tracking-tight">{profile.name ?? profile.login}</h2>
+                  <h2 className="text-lg font-bold tracking-tight">{displayName}</h2>
                   <p className="font-mono text-sm text-neon">@{profile.login}</p>
                 </div>
               </div>
@@ -92,14 +114,14 @@ export function BubbleModal({
               </button>
             </div>
 
-            {profile.bio && <p className="mt-3 text-sm text-ink-dim">{profile.bio}</p>}
+            {displayBio && <p className="mt-3 text-sm text-ink-dim">{displayBio}</p>}
 
             {/* Stats row */}
             <div className="mt-5 grid grid-cols-3 gap-3">
               {[
-                { icon: Folder, label: "Repos", value: formatNumber(profile.repos ?? 0) },
-                { icon: Star, label: "Stars", value: formatNumber(profile.stars ?? 0) },
-                { icon: Flame, label: "Activity", value: profile.languages?.[0] ?? "—" },
+                { icon: Folder, label: "Repos", value: formatNumber(repoCount) },
+                { icon: Star, label: "Followers", value: formatNumber(followers) },
+                { icon: Flame, label: "Following", value: formatNumber(following) },
               ].map(({ icon: Icon, label, value }) => (
                 <div key={label} className="glass rounded-xl px-3 py-2.5">
                   <Icon className="size-4 text-violet" />
@@ -109,20 +131,23 @@ export function BubbleModal({
               ))}
             </div>
 
-            {/* Languages */}
-            {profile.languages && profile.languages.length > 0 && (
-              <div className="mt-4 flex items-center gap-2">
-                <Code2 className="size-4 text-ink-faint" />
-                {profile.languages.map((lang) => (
-                  <span
-                    key={lang}
-                    className="rounded-full border border-edge bg-panel px-2.5 py-0.5 text-xs text-ink-dim"
-                  >
-                    {lang}
-                  </span>
-                ))}
-              </div>
-            )}
+            {/* Preserved count + languages */}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {preserved > 0 && (
+                <span className="flex items-center gap-1.5 rounded-full bg-lime/10 px-2.5 py-1 text-xs text-lime">
+                  <Archive className="size-3.5" /> {formatNumber(preserved)} preserved
+                </span>
+              )}
+              {languages.map((lang) => (
+                <span
+                  key={lang}
+                  className="flex items-center gap-1 rounded-full border border-edge bg-panel px-2.5 py-0.5 text-xs text-ink-dim"
+                >
+                  <Code2 className="size-3 text-ink-faint" />
+                  {lang}
+                </span>
+              ))}
+            </div>
 
             {/* Archived repositories from Salsyx */}
             <div className="mt-5">

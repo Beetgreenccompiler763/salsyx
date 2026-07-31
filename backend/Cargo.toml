@@ -39,6 +39,8 @@ async-channel.workspace = true
 parking_lot.workspace = true
 once_cell.workspace = true
 hmac = "0.12"
+base64 = "0.22"
+tempfile = "3"
 
 # Observability — Sentry error tracking (optional, gated by the `sentry` feature).
 # Uses reqwest + rustls transport (no OpenSSL system dependency).

@@ -8,9 +8,13 @@ import type {
   Archive,
   ErrorBody,
   HealthResponse,
+  HistoryResponse,
+  OwnerResponse,
+  ReadmeResponse,
   RepoResponse,
   SearchResponse,
   StatsResponse,
+  TreeResponse,
 } from "./types";
 
 export class ApiError extends Error {
@@ -88,6 +92,30 @@ export const api = {
 
   repo(owner: string, repo: string): Promise<RepoResponse> {
     return request<RepoResponse>(`/api/v1/repo/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`);
+  },
+
+  readme(owner: string, repo: string): Promise<ReadmeResponse> {
+    return request<ReadmeResponse>(
+      `/api/v1/repo/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/readme`,
+    );
+  },
+
+  owner(login: string): Promise<OwnerResponse> {
+    return request<OwnerResponse>(`/api/v1/owner/${encodeURIComponent(login)}`);
+  },
+
+  history(owner: string, repo: string): Promise<HistoryResponse> {
+    return request<HistoryResponse>(
+      `/api/v1/repo/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/archives`,
+    );
+  },
+
+  archiveTree(id: string): Promise<TreeResponse> {
+    return request<TreeResponse>(`/api/v1/archive/${id}/tree`);
+  },
+
+  blobUrl(id: string, path: string): string {
+    return `/api/v1/archive/${id}/blob?path=${encodeURIComponent(path)}`;
   },
 
   archive(id: string): Promise<Archive> {

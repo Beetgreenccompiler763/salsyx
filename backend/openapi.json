@@ -14,7 +14,9 @@
     { "name": "search", "description": "Repository search" },
     { "name": "repository", "description": "Repository resolution" },
     { "name": "archive", "description": "Archived snapshots" },
-    { "name": "stats", "description": "Platform statistics" }
+    { "name": "stats", "description": "Platform statistics" },
+    { "name": "owner", "description": "GitHub owner profiles" },
+    { "name": "webhook", "description": "Event-driven integrations" }
   ],
   "paths": {
     "/health": {
@@ -216,6 +218,151 @@
           }
         }
       }
+    },
+    "/repo/{owner}/{repo}/readme": {
+      "get": {
+        "tags": ["repository"],
+        "summary": "Get the README",
+        "description": "Returns the default-branch README, preferring the preserved snapshot and falling back to a live GitHub fetch.",
+        "operationId": "getReadme",
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "README content",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ReadmeResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "No README available",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorBody" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/repo/{owner}/{repo}/archives": {
+      "get": {
+        "tags": ["repository"],
+        "summary": "Archive history for a repository",
+        "operationId": "repoArchiveHistory",
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Archives, newest first",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HistoryResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/owner/{login}": {
+      "get": {
+        "tags": ["owner"],
+        "summary": "Owner profile",
+        "description": "Live GitHub profile (followers/following/public repos/pinned) plus preserved-repo counts.",
+        "operationId": "getOwner",
+        "parameters": [
+          { "name": "login", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owner profile",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/OwnerResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Owner not found on GitHub",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorBody" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/archive/{id}/tree": {
+      "get": {
+        "tags": ["archive"],
+        "summary": "Browse the preserved file tree",
+        "operationId": "archiveTree",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recursive file listing",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TreeResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/archive/{id}/blob": {
+      "get": {
+        "tags": ["archive"],
+        "summary": "Stream one preserved file",
+        "operationId": "archiveBlob",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "path", "in": "query", "required": true, "description": "File path within the archive", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "File bytes",
+            "content": {
+              "application/octet-stream": { "schema": { "type": "string", "format": "binary" } }
+            }
+          },
+          "404": {
+            "description": "Path not present in the archive",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorBody" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhook/github": {
+      "post": {
+        "tags": ["webhook"],
+        "summary": "GitHub webhook (event-driven refresh)",
+        "description": "Receives GitHub deliveries. Sits at the host root (not under /api/v1).",
+        "operationId": "githubWebhook",
+        "responses": {
+          "200": {
+            "description": "Webhook acknowledged",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WebhookResponse" }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -357,6 +504,96 @@
           "status": { "type": "string" },
           "source": { "type": "string" },
           "archive_id": { "type": "string", "format": "uuid" }
+        }
+      },
+      "ReadmeResponse": {
+        "type": "object",
+        "properties": {
+          "source": { "type": "string", "enum": ["salsyx", "github"] },
+          "readme": { "type": "string" },
+          "html_url": { "type": "string" }
+        }
+      },
+      "OwnerTopRepo": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "full_name": { "type": "string" },
+          "description": { "type": "string" },
+          "language": { "type": "string" },
+          "stars_count": { "type": "integer" },
+          "html_url": { "type": "string" }
+        }
+      },
+      "PinnedRepo": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "full_name": { "type": "string" },
+          "description": { "type": "string" },
+          "primary_language": { "type": "string" },
+          "stargazer_count": { "type": "integer" },
+          "html_url": { "type": "string" }
+        }
+      },
+      "OwnerResponse": {
+        "type": "object",
+        "properties": {
+          "login": { "type": "string" },
+          "name": { "type": "string" },
+          "bio": { "type": "string" },
+          "avatar_url": { "type": "string" },
+          "html_url": { "type": "string" },
+          "followers": { "type": "integer" },
+          "following": { "type": "integer" },
+          "public_repos": { "type": "integer" },
+          "preserved_count": { "type": "integer" },
+          "top_repos": { "type": "array", "items": { "$ref": "#/components/schemas/OwnerTopRepo" } },
+          "pinned_repos": { "type": "array", "items": { "$ref": "#/components/schemas/PinnedRepo" } }
+        }
+      },
+      "TreeEntry": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "type": { "type": "string", "enum": ["blob", "tree", "commit"] },
+          "size": { "type": "integer" }
+        }
+      },
+      "TreeResponse": {
+        "type": "object",
+        "properties": {
+          "archive_id": { "type": "string", "format": "uuid" },
+          "commit_ref": { "type": "string" },
+          "entries": { "type": "array", "items": { "$ref": "#/components/schemas/TreeEntry" } },
+          "regenerated": { "type": "boolean" }
+        }
+      },
+      "HistoryArchive": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "commit_ref": { "type": "string" },
+          "commit_count": { "type": "integer" },
+          "checksum": { "type": "string" },
+          "size_bytes": { "type": "integer" },
+          "status": { "type": "string" },
+          "archived_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "HistoryResponse": {
+        "type": "object",
+        "properties": {
+          "owner": { "type": "string" },
+          "repo": { "type": "string" },
+          "archives": { "type": "array", "items": { "$ref": "#/components/schemas/HistoryArchive" } }
+        }
+      },
+      "WebhookResponse": {
+        "type": "object",
+        "properties": {
+          "received": { "type": "boolean" },
+          "scheduled": { "type": "array", "items": { "type": "string" } }
         }
       },
       "ErrorBody": {

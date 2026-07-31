@@ -2,6 +2,7 @@ import { BubbleField } from "@/components/bubble/BubbleField";
 import { ParticleField } from "@/components/background/ParticleField";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { StatsBar } from "@/components/home/StatsBar";
+import { TrendingDeleted } from "@/components/home/TrendingDeleted";
 import { HowItWorks } from "@/components/home/HowItWorks";
 import { PixelDeco } from "@/components/ui/PixelDeco";
 
@@ -35,6 +36,10 @@ export default function HomePage() {
             should <span className="text-gradient">disappear</span> forever.
           </h1>
 
+          <p className="mt-5 text-xs font-bold uppercase tracking-[0.4em] text-neon/90 md:text-sm">
+            Preserving Open Source Forever.
+          </p>
+
           <p className="mx-auto mt-6 max-w-xl text-pretty text-base text-ink-dim md:text-lg">
             Salsyx searches GitHub in real time, and if a repository is gone, we bring it
             back from the archive. Browse, download, and preserve — forever.
@@ -57,6 +62,9 @@ export default function HomePage() {
 
       {/* ---- Live stats strip ------------------------------------------- */}
       <StatsBar />
+
+      {/* ---- Trending deleted ------------------------------------------- */}
+      <TrendingDeleted />
 
       {/* ---- How it works ----------------------------------------------- */}
       <HowItWorks />

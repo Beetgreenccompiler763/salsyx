@@ -14,7 +14,7 @@ use std::time::Duration;
 
 use anyhow::Context;
 use reqwest::StatusCode;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument};
 
 use crate::config::GithubConfig;
@@ -75,6 +75,46 @@ pub struct GithubLicense {
     pub key: String,
     pub name: String,
     pub spdx_id: Option<String>,
+}
+
+/// GitHub user/org profile payload (subset we care about).
+#[derive(Debug, Clone, Deserialize)]
+pub struct GithubUser {
+    pub id: i64,
+    pub login: String,
+    pub name: Option<String>,
+    pub avatar_url: Option<String>,
+    pub bio: Option<String>,
+    pub company: Option<String>,
+    pub blog: Option<String>,
+    pub location: Option<String>,
+    pub twitter_username: Option<String>,
+    pub followers: i64,
+    pub following: i64,
+    #[serde(rename = "public_repos")]
+    pub public_repos: i64,
+    #[serde(rename = "type")]
+    pub user_type: String,
+    pub created_at: Option<String>,
+}
+
+/// Raw README content returned by the GitHub API.
+#[derive(Debug, Clone)]
+pub struct ReadmeData {
+    pub text: String,
+    pub html_url: String,
+    #[allow(dead_code)]
+    pub download_url: String,
+}
+
+/// A repository pinned on an owner's GitHub profile.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PinnedRepo {
+    pub name: String,
+    pub full_name: String,
+    pub description: Option<String>,
+    pub language: Option<String>,
+    pub stars_count: i64,
 }
 
 /// The subset of `GithubRepo` that the rate-limited commit-count call needs.
@@ -179,6 +219,244 @@ impl GithubClient {
 
     /// Estimate commit count by inspecting the `Link` header of the commits
     /// endpoint (cheap: one request, no bodies transferred).
+    /// Authorize a request with the configured bearer token, if any.
+    fn authorize(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+        match &self.token {
+            Some(token) => req.header("Authorization", format!("Bearer {token}")),
+            None => req,
+        }
+    }
+
+    /// Fetch a user/organization profile from the REST API.
+    #[instrument(skip(self), fields(login = %login))]
+    pub async fn get_user(&self, login: &str) -> Result<GithubUser, GithubError> {
+        let url = self.endpoint(&format!("/users/{login}"));
+        let resp = self.authorize(self.http.get(&url)).send().await?;
+
+        match resp.status() {
+            StatusCode::OK => Ok(resp.json().await?),
+            StatusCode::NOT_FOUND => Err(GithubError::NotFound),
+            StatusCode::FORBIDDEN | StatusCode::TOO_MANY_REQUESTS => {
+                Err(GithubError::RateLimited)
+            }
+            status => Err(GithubError::Upstream(format!("unexpected status {status}"))),
+        }
+    }
+
+    /// List a user's repositories, most recently pushed first.
+    ///
+    /// Used by the owner profile endpoint to surface top repos. `per_page`
+    /// is capped by GitHub at 100.
+    #[instrument(skip(self), fields(login = %login))]
+    pub async fn list_user_repos(
+        &self,
+        login: &str,
+        per_page: i64,
+    ) -> Result<Vec<GithubRepo>, GithubError> {
+        let url = self.endpoint(&format!(
+            "/users/{login}/repos?sort=pushed&per_page={per_page}"
+        ));
+        let resp = self.authorize(self.http.get(&url)).send().await?;
+
+        match resp.status() {
+            StatusCode::OK => Ok(resp.json().await?),
+            StatusCode::NOT_FOUND => Err(GithubError::NotFound),
+            StatusCode::FORBIDDEN | StatusCode::TOO_MANY_REQUESTS => {
+                Err(GithubError::RateLimited)
+            }
+            status => Err(GithubError::Upstream(format!("unexpected status {status}"))),
+        }
+    }
+
+    /// Fetch the default-branch README as raw text (plus its HTML URL).
+    ///
+    /// Sends `Accept: application/vnd.github.raw+json` so GitHub returns the
+    /// plaintext README instead of a base64 blob.
+    #[instrument(skip(self), fields(full_name = %full_name))]
+    pub async fn get_readme(&self, full_name: &str) -> Result<ReadmeData, GithubError> {
+        let url = self.endpoint(&format!("/repos/{full_name}/readme"));
+        let resp = self
+            .authorize(
+                self.http
+                    .get(&url)
+                    .header("Accept", "application/vnd.github.raw+json"),
+            )
+            .send()
+            .await?;
+
+        match resp.status() {
+            StatusCode::OK => {
+                let text = resp.text().await?;
+                // GitHub returns the raw README with a redirect to raw.githubusercontent.
+                let html_url = format!("https://github.com/{full_name}");
+                Ok(ReadmeData {
+                    text,
+                    html_url,
+                    download_url: format!("https://raw.githubusercontent.com/{full_name}/HEAD/"),
+                })
+            }
+            StatusCode::NOT_FOUND => Err(GithubError::NotFound),
+            StatusCode::FORBIDDEN | StatusCode::TOO_MANY_REQUESTS => {
+                Err(GithubError::RateLimited)
+            }
+            status => Err(GithubError::Upstream(format!("unexpected status {status}"))),
+        }
+    }
+
+    /// Fetch the raw bytes of a file from a live repository.
+    ///
+    /// Uses the Contents API (`base64` body) so we can serve files from live
+    /// repos without hitting raw.githubusercontent directly.
+    #[instrument(skip(self), fields(full_name = %full_name, path = %path))]
+    pub async fn get_file_contents(
+        &self,
+        full_name: &str,
+        path: &str,
+        branch: Option<&str>,
+    ) -> Result<Option<Vec<u8>>, GithubError> {
+        let url = self.endpoint(&format!(
+            "/repos/{full_name}/contents/{}?{}",
+            url::form_urlencoded::byte_serialize(path.as_bytes()).collect::<String>(),
+            branch
+                .map(|b| format!("ref={}", url::form_urlencoded::byte_serialize(b.as_bytes()).collect::<String>()))
+                .unwrap_or_default()
+        ));
+
+        let resp = self.authorize(self.http.get(&url)).send().await?;
+
+        match resp.status() {
+            StatusCode::OK => {
+                #[derive(serde::Deserialize)]
+                struct ContentsResponse {
+                    content: Option<String>,
+                    encoding: Option<String>,
+                }
+                let body: ContentsResponse = resp.json().await?;
+                if body.encoding.as_deref() == Some("base64") {
+                    if let Some(encoded) = body.content {
+                        use base64::Engine;
+                        return Ok(Some(
+                            base64::engine::general_purpose::STANDARD
+                                .decode(encoded.replace('\n', ""))
+                                .unwrap_or_default(),
+                        ));
+                    }
+                }
+                Ok(None)
+            }
+            StatusCode::NOT_FOUND => Ok(None),
+            StatusCode::FORBIDDEN | StatusCode::TOO_MANY_REQUESTS => {
+                Err(GithubError::RateLimited)
+            }
+            _ => Err(GithubError::Upstream(format!(
+                "unexpected status {}",
+                resp.status()
+            ))),
+        }
+    }
+
+    /// Fetch pinned repositories via the GitHub GraphQL API.
+    ///
+    /// Anonymous GraphQL is not allowed, so this returns an empty vec when no
+    /// token is configured (the REST `list_user_repos` result is the fallback).
+    #[instrument(skip(self), fields(login = %login))]
+    pub async fn get_pinned_repos(&self, login: &str) -> Result<Vec<PinnedRepo>, GithubError> {
+        let Some(token) = &self.token else {
+            return Ok(Vec::new());
+        };
+
+        let query = r#"query($login: String!) {
+            user(login: $login) {
+                pinnedItems(first: 6, types: REPOSITORY) {
+                    nodes {
+                        ... on Repository {
+                            name
+                            nameWithOwner
+                            description
+                            primaryLanguage { name }
+                            stargazerCount
+                        }
+                    }
+                }
+            }
+        }"#;
+
+        #[derive(serde::Serialize)]
+        struct GraphqlBody<'a> {
+            query: &'a str,
+            variables: serde_json::Value,
+        }
+
+        let resp = self
+            .http
+            .post(self.endpoint("/graphql"))
+            .header("Authorization", format!("Bearer {token}"))
+            .json(&GraphqlBody {
+                query,
+                variables: serde_json::json!({ "login": login }),
+            })
+            .send()
+            .await?;
+
+        if !resp.status().is_success() {
+            return Err(GithubError::Upstream(format!(
+                "graphql returned {}",
+                resp.status()
+            )));
+        }
+
+        #[derive(serde::Deserialize)]
+        struct GraphqlResponse {
+            #[allow(dead_code)]
+            errors: Option<serde_json::Value>,
+            data: Option<GraphqlData>,
+        }
+        #[derive(serde::Deserialize)]
+        struct GraphqlData {
+            user: Option<GraphqlUser>,
+        }
+        #[derive(serde::Deserialize)]
+        struct GraphqlUser {
+            pinned_items: Option<GraphqlPinned>,
+        }
+        #[derive(serde::Deserialize)]
+        struct GraphqlPinned {
+            nodes: Vec<GraphqlNode>,
+        }
+        #[derive(serde::Deserialize)]
+        struct GraphqlNode {
+            name: String,
+            name_with_owner: String,
+            description: Option<String>,
+            primary_language: Option<GraphqlLang>,
+            stargazer_count: i64,
+        }
+        #[derive(serde::Deserialize)]
+        struct GraphqlLang {
+            name: String,
+        }
+
+        let body: GraphqlResponse = resp.json().await?;
+        let Some(user) = body.data.and_then(|d| d.user) else {
+            return Ok(Vec::new());
+        };
+        let Some(pinned) = user.pinned_items else {
+            return Ok(Vec::new());
+        };
+
+        Ok(pinned
+            .nodes
+            .into_iter()
+            .map(|n| PinnedRepo {
+                name: n.name,
+                full_name: n.name_with_owner,
+                description: n.description,
+                language: n.primary_language.map(|l| l.name),
+                stars_count: n.stargazer_count,
+            })
+            .collect())
+    }
+
     #[instrument(skip(self), fields(full_name = %full_name))]
     pub async fn get_commit_count(&self, full_name: &str) -> Result<Option<i64>, GithubError> {
         let url = self.endpoint(&format!("/repos/{full_name}/commits?per_page=1"));

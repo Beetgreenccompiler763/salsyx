@@ -66,12 +66,22 @@ pub async fn resolve_repository(
             let owner_id = crate::db::upsert_owner_from_github(&state.pool, &repo).await?;
             let repo_id = crate::db::upsert_repository(&state.pool, owner_id, &repo).await?;
 
+            // GitHub silently redirects renamed repositories (`old/name` →
+            // canonical name). Record the requested name as an alias so the
+            // old full name keeps resolving even after the repo is deleted.
+            if repo.full_name != normalized {
+                let _ = crate::db::upsert_repository_alias(&state.pool, &normalized, repo_id).await;
+            }
+
             // Best-effort commit count (cheap, non-fatal).
             if let Ok(Some(count)) = state.github.get_commit_count(&normalized).await {
                 let _ = crate::db::set_commit_count(&state.pool, repo_id, count).await;
             }
 
-            let row = crate::db::find_repository(&state.pool, &normalized)
+            // Fetch by the upserted row id — NOT by the requested name — so a
+            // renamed repository resolves instead of 500ing with "upserted but
+            // not found".
+            let row = crate::db::find_repository_by_id(&state.pool, repo_id)
                 .await?
                 .ok_or_else(|| {
                     AppError::Internal(anyhow::anyhow!(
@@ -79,11 +89,13 @@ pub async fn resolve_repository(
                     ))
                 })?;
 
+            let branch = repo.default_branch.as_deref().unwrap_or("main");
+
             Ok(ResolveResult {
                 outcome: ResolveOutcome::Live {
                     repository: crate::db::repository_from_row(row),
                     download_url: format!(
-                        "https://github.com/{normalized}/archive/refs/heads/main.zip"
+                        "https://github.com/{normalized}/archive/refs/heads/{branch}.zip"
                     ),
                 },
                 source: "github",
