@@ -23,6 +23,7 @@ on:
       - "shared/**"
       - "frontend/**"
       - ".github/workflows/deploy.yml"
+  workflow_dispatch:
 
 jobs:
   deploy-backend:
@@ -35,12 +36,12 @@ jobs:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy API
-        run: flyctl deploy --remote-only --config backend/fly.toml
+        run: flyctl deploy --remote-only --config backend/fly.toml --now
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
       - name: Deploy Crawler
-        run: flyctl deploy --remote-only --config crawler/fly.toml
+        run: flyctl deploy --remote-only --config crawler/fly.toml --now
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
