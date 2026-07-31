@@ -240,7 +240,7 @@ pub async fn tree(
 
     let entries = if entries.is_empty() {
         // Backfill: older archives predate the snapshot column. Regenerate
-        // the listing from the preserved bundle itself.
+        // the listing from the preserved artifact itself.
         regenerated = true;
         let blob = state
             .storage
@@ -248,11 +248,33 @@ pub async fn tree(
             .await
             .map_err(|e| crate::error::AppError::Internal(anyhow::anyhow!("{e}")))?;
 
-        let bytes = blob.bytes.clone();
-        let entries = tokio::task::spawn_blocking(move || crate::git::list_bundle_tree(&bytes))
-            .await
-            .map_err(|e| crate::error::AppError::Internal(anyhow::anyhow!("{e}")))?
-            .map_err(crate::error::AppError::Internal)?;
+        let entries: Vec<crate::git::TreeEntry> = if row.compression_method == "custom" {
+            // AAHL snapshot: derive the tree from the manifest (no chunk reads).
+            let manifest: aahl::Manifest = serde_json::from_slice(&blob.bytes)
+                .map_err(|e| crate::error::AppError::Internal(anyhow::anyhow!("{e}")))?;
+            aahl::decode::list(&manifest)
+                .iter()
+                .map(|e| crate::git::TreeEntry {
+                    path: e.path.clone(),
+                    kind: match e.kind {
+                        aahl::FileKind::File => "blob".to_string(),
+                        aahl::FileKind::Dir => "tree".to_string(),
+                        aahl::FileKind::Symlink => "symlink".to_string(),
+                    },
+                    size: if e.kind == aahl::FileKind::File {
+                        Some(e.size as i64)
+                    } else {
+                        None
+                    },
+                })
+                .collect()
+        } else {
+            let bytes = blob.bytes.clone();
+            tokio::task::spawn_blocking(move || crate::git::list_bundle_tree(&bytes))
+                .await
+                .map_err(|e| crate::error::AppError::Internal(anyhow::anyhow!("{e}")))?
+                .map_err(crate::error::AppError::Internal)?
+        };
 
         let value = serde_json::to_value(&entries)
             .map_err(|e| crate::error::AppError::Internal(anyhow::anyhow!("{e}")))?;
@@ -314,7 +336,27 @@ pub async fn blob(
 
     let branch = repo.default_branch.as_deref();
 
-    let bytes = if repo.is_deleted {
+    let bytes = if row.compression_method == "custom" {
+        // AAHL snapshot: reassemble the file from the manifest + chunk store
+        // (works whether or not the repository still exists upstream).
+        let blob = state
+            .storage
+            .get(&row.storage_key, Some(&row.checksum))
+            .await
+            .map_err(|e| crate::error::AppError::Internal(anyhow::anyhow!("{e}")))?;
+        let manifest: aahl::Manifest = serde_json::from_slice(&blob.bytes)
+            .map_err(|e| crate::error::AppError::Internal(anyhow::anyhow!("{e}")))?;
+        let store = crate::aahl::StorageChunkStore::new(state.storage.as_ref());
+        let entry = aahl::decode::list(&manifest)
+            .iter()
+            .find(|e| e.kind == aahl::FileKind::File && e.path == params.path)
+            .ok_or_else(|| crate::error::AppError::NotFound {
+                full_name: format!("{}:{}", repo.full_name, params.path),
+            })?;
+        aahl::decode::read_file(&manifest, entry, &store)
+            .await
+            .map_err(|e| crate::error::AppError::Internal(anyhow::anyhow!("{e}")))?
+    } else if repo.is_deleted {
         // The repository is gone from GitHub — serve from the preserved bundle.
         let blob = state
             .storage

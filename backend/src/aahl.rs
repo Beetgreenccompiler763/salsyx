@@ -130,6 +130,9 @@ mod tests {
 
         // Chunk must be addressable by its uncompressed digest in storage.
         let first = &manifest.blobs[0];
-        assert!(storage.exists(&format!("{CHUNK_PREFIX}/{first}")).await.unwrap());
+        assert!(storage
+            .exists(&format!("{CHUNK_PREFIX}/{first}"))
+            .await
+            .unwrap());
     }
 }
