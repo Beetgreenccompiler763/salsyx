@@ -32,7 +32,7 @@ pub async fn overview(
         SELECT
             (SELECT count(*) FROM repositories)::bigint,
             (SELECT count(*) FROM repositories WHERE is_deleted)::bigint,
-            (SELECT count(*) FROM repositories WHERE archived_at IS NOT NULL)::bigint,
+            (SELECT count(DISTINCT repository_id) FROM archives WHERE status = 'archived')::bigint,
             (SELECT count(*) FROM archives WHERE status = 'archived')::bigint,
             (SELECT COALESCE(sum(size_bytes), 0) FROM archives WHERE status = 'archived')::bigint
         "#,
