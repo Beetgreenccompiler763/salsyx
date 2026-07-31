@@ -10,7 +10,7 @@
 app = "archivehub-api"
 
 [build]
-  dockerfile = "backend/Dockerfile"
+  dockerfile = "Dockerfile"
 
 [env]
   AH_APP__ENV = "production"

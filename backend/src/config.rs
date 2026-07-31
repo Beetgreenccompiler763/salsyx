@@ -104,7 +104,8 @@ impl Config {
 
         // Locate the default TOML regardless of the current working directory
         // (workspace root, `backend/`, or a container where it's baked in).
-        let mut figment = Figment::new().merge(Env::prefixed("AH_").split("__").lowercase(false));
+        // The TOML provides low-priority defaults; env vars (AH_*) win.
+        let mut figment = Figment::new();
 
         for candidate in [
             "config/default.toml",
@@ -116,6 +117,8 @@ impl Config {
                 break;
             }
         }
+
+        figment = figment.merge(Env::prefixed("AH_").split("__"));
 
         let mut config: Config = figment.extract()?;
 

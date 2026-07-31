@@ -9,7 +9,7 @@
 app = "archivehub-crawler"
 
 [build]
-  dockerfile = "crawler/Dockerfile"
+  dockerfile = "Dockerfile"
 
 [env]
   AH_APP__ENV = "production"
