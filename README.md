@@ -48,7 +48,7 @@ immutable file per snapshot, SHA-256 verified on every read.
 
 **Search** — Postgres `pg_trgm` (Neon free tier): substring + fuzzy matching
 across name / owner / description, filtered by language, license, topics,
-stars. Full-text (README) groundwork already in place.
+stars. Full-text search over preserved READMEs with `?mode=full_text`.
 
 **Queue** — durable `crawl_jobs` table (cross-process, restart-safe,
 horizontally scalable) plus an in-memory event channel for fast feedback.
@@ -75,14 +75,20 @@ Then open http://localhost:3000 and search `torvalds/linux`. See
 
 ```
 GET  /api/v1/health
-GET  /api/v1/search            ?q=…&language=…&min_stars=…&sort=…
+GET  /api/v1/search            ?q=…&language=…&min_stars=…&sort=…&mode=full_text
 GET  /api/v1/repo/{owner}/{repo}
+GET  /api/v1/repo/{owner}/{repo}/readme
+GET  /api/v1/repo/{owner}/{repo}/archives
+GET  /api/v1/owner/{login}
 GET  /api/v1/archive/{id}
+GET  /api/v1/archive/{id}/tree
+GET  /api/v1/archive/{id}/blob  ?path=…
 GET  /api/v1/download/{id}
 GET  /api/v1/stats
 GET  /api/v1/stats/top
 POST /api/v1/archive           # request preservation of owner/repo
 POST /api/v1/refresh
+POST /webhook/github           # host root, HMAC-signed GitHub deliveries
 ```
 
 The live document is served at `/openapi.json`.
@@ -109,11 +115,9 @@ profile modals.
 
 ## Roadmap (architecture ready)
 
-Automatic pre-deletion archiving · Software Heritage / Wayback / archive.org
-integration · public API keys · user accounts & favorites · repository
-history / version snapshots · trending deleted repositories · AI / semantic
-code search · global deduplication · custom long-term archive format ·
-distributed storage · analytics dashboard.
+Software Heritage / Wayback / archive.org integration · public API keys ·
+user accounts & favorites · AI / semantic code search · global deduplication ·
+custom long-term archive format · distributed storage · analytics dashboard.
 
 ## License
 

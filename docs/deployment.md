@@ -95,6 +95,7 @@ by `AH_`-prefixed env vars (`AH_SERVER__PORT=9000`, `AH_DATABASE__URL=…`).
 | `AH_SERVER__ALLOWED_ORIGIN` | CORS origin | `http://localhost:3000` |
 | `AH_DATABASE__URL` | Postgres URL | local compose db |
 | `AH_GITHUB__TOKEN` | PAT (5000 req/h) or blank (60 req/h) | blank |
+| `AH_GITHUB__WEBHOOK_SECRET` | HMAC secret for `POST /webhook/github` | blank (verification off) |
 | `AH_STORAGE__PROVIDER` | `local` \| `r2` | `local` |
 | `AH_STORAGE__R2_*` | R2 endpoint/bucket/keys | — |
 | `AH_SENTRY_DSN` | Sentry DSN (needs `--features sentry`) | — |
@@ -110,6 +111,7 @@ cd backend
 flyctl launch
 flyctl secrets set AH_DATABASE__URL=postgres://…@…/archivehub
 flyctl secrets set AH_GITHUB__TOKEN=…
+flyctl secrets set AH_GITHUB__WEBHOOK_SECRET=…   # enables signature verification
 flyctl secrets set AH_STORAGE__PROVIDER=r2 AH_STORAGE__R2_ACCOUNT_ID=… …
 flyctl deploy
 ```
