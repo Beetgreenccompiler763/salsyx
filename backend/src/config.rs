@@ -48,6 +48,10 @@ pub struct ServerConfig {
     pub allowed_origin: String,
     /// Path to the static OpenAPI document served at `/openapi.json`.
     pub openapi_path: String,
+    /// Bearer token protecting `/api/v1/admin/*`. When unset/empty the admin
+    /// routes are disabled (404).
+    #[serde(default)]
+    pub admin_token: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

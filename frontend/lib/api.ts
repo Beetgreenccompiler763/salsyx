@@ -5,6 +5,8 @@
 // on Cloudflare Pages / Vercel behind a reverse proxy.
 
 import type {
+  AdminJobCount,
+  AdminOverview,
   Archive,
   ErrorBody,
   HealthResponse,
@@ -137,5 +139,11 @@ export const api = {
 
   downloadUrl(id: string): string {
     return `/api/v1/download/${id}`;
+  },
+
+  adminOverview(token: string): Promise<AdminOverview> {
+    return request<AdminOverview>("/api/v1/admin/overview", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
   },
 };

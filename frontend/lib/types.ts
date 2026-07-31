@@ -209,6 +209,40 @@ export interface ErrorBody {
   detail?: string | null;
 }
 
+export interface AdminCounts {
+  total_repositories: number;
+  deleted_repositories: number;
+  archived_repositories: number;
+  total_archives: number;
+  total_storage_bytes: number;
+}
+
+export interface AdminJobCount {
+  job_type: string;
+  status: string;
+  count: number;
+}
+
+export interface AdminRecentArchive {
+  id: string;
+  full_name: string;
+  status: string;
+  compression_method: string;
+  size_bytes: number | null;
+  archived_at: string | null;
+}
+
+export interface AdminOverview {
+  generated_at: string;
+  counts: AdminCounts | null;
+  pending_jobs: number;
+  job_breakdown: AdminJobCount[];
+  recent_archives: AdminRecentArchive[];
+  providers: { name: string; enabled: boolean }[];
+  storage: { provider: string; key_namespace: string };
+  formats: { name: string; default: boolean }[];
+}
+
 /** Seed data for the landing-page bubble field when the API is unreachable. */
 export interface BubbleProfile {
   login: string;

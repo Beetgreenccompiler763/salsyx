@@ -43,6 +43,12 @@ pub enum AppError {
     #[error("rate limit exceeded")]
     RateLimited,
 
+    #[error("admin endpoint disabled (AH_SERVER__ADMIN_TOKEN not set)")]
+    AdminDisabled,
+
+    #[error("invalid or missing admin credentials")]
+    Unauthorized,
+
     #[error(transparent)]
     Database(#[from] sqlx::Error),
 
@@ -62,6 +68,8 @@ impl AppError {
             AppError::Upstream(_) => StatusCode::BAD_GATEWAY,
             AppError::Validation(_) => StatusCode::BAD_REQUEST,
             AppError::RateLimited => StatusCode::TOO_MANY_REQUESTS,
+            AppError::AdminDisabled => StatusCode::NOT_FOUND,
+            AppError::Unauthorized => StatusCode::UNAUTHORIZED,
             AppError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::Migration(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
@@ -76,6 +84,8 @@ impl AppError {
             AppError::Upstream(_) => "upstream_unavailable",
             AppError::Validation(_) => "invalid_input",
             AppError::RateLimited => "rate_limited",
+            AppError::AdminDisabled => "admin_disabled",
+            AppError::Unauthorized => "unauthorized",
             AppError::Database(_) => "internal_error",
             AppError::Migration(_) => "internal_error",
             AppError::Internal(_) => "internal_error",

@@ -23,6 +23,7 @@ use axum::{
 use crate::config::Config;
 use crate::state::AppState;
 
+pub mod admin;
 pub mod archive;
 pub mod health;
 pub mod owner;
@@ -47,6 +48,7 @@ pub fn build(_config: &Config, state: AppState) -> Router {
         .route("/download/{id}", get(archive::download))
         .route("/stats", get(stats::stats))
         .route("/stats/top", get(stats::top))
+        .route("/admin/overview", get(admin::overview))
         .route("/archive", post(archive::create_archive))
         .route("/refresh", post(repo::refresh))
         .with_state(state.clone());
