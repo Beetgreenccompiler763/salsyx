@@ -1,18 +1,18 @@
 [package]
-name = "archivehub-crawler"
+name = "salsyx-crawler"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "ArchiveHub background crawler — monitors, tracks, and archives repositories before they disappear."
+description = "Salsyx background crawler — monitors, tracks, and archives repositories before they disappear."
 
 [[bin]]
-name = "archivehub-crawler"
+name = "salsyx-crawler"
 path = "src/main.rs"
 
 [dependencies]
-archivehub-shared = { path = "../shared" }
-archivehub-api = { path = "../backend" }
+salsyx-shared = { path = "../shared" }
+salsyx-api = { path = "../backend" }
 
 tokio.workspace = true
 sqlx.workspace = true

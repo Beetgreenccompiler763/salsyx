@@ -1,4 +1,4 @@
-//! ArchiveHub shared crate.
+//! Salsyx shared crate.
 //!
 //! This crate contains the canonical domain types, enums, and constants
 //! shared between the API server, the crawler workers, and the storage
@@ -24,4 +24,4 @@ pub mod search;
 pub const API_VERSION: &str = "v1";
 
 /// Name of the canonical header clients must send to request the API version.
-pub const API_VERSION_HEADER: &str = "x-archivehub-version";
+pub const API_VERSION_HEADER: &str = "x-salsyx-version";

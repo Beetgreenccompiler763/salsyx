@@ -19,12 +19,12 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: archivehub
-          POSTGRES_PASSWORD: archivehub
-          POSTGRES_DB: archivehub
+          POSTGRES_USER: salsyx
+          POSTGRES_PASSWORD: salsyx
+          POSTGRES_DB: salsyx
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U archivehub -d archivehub"
+          --health-cmd "pg_isready -U salsyx -d salsyx"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
@@ -49,7 +49,7 @@ jobs:
       - name: Test
         run: cargo test --all
         env:
-          DATABASE_URL: postgres://archivehub:archivehub@localhost:5432/archivehub
+          DATABASE_URL: postgres://salsyx:salsyx@localhost:5432/salsyx
 
   frontend:
     name: Frontend (Next.js)

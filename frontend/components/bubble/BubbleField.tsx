@@ -1,6 +1,6 @@
 "use client";
 
-// ArchiveHub's signature visual: a field of hundreds of floating GitHub
+// Salsyx's signature visual: a field of hundreds of floating GitHub
 // user bubbles. Canvas-2D based for performance (hundreds of particles at
 // 60fps without touching the DOM), with soft-body collision avoidance,
 // cursor repulsion, hover glow, and a "pop" interaction that opens a
@@ -28,7 +28,7 @@ interface Bubble {
 }
 
 // Curated seed of well-known GitHub accounts. In production this is replaced
-// by a server-fed feed from the ArchiveHub database.
+// by a server-fed feed from the Salsyx database.
 const SEED: BubbleProfile[] = [
   { login: "torvalds", name: "Linus Torvalds", repos: 5, stars: 250000, languages: ["C", "Rust"] },
   { login: "gaearon", name: "Dan Abramov", repos: 32, stars: 120000, languages: ["JS", "TS"] },

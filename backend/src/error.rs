@@ -100,24 +100,22 @@ impl IntoResponse for AppError {
     }
 }
 
-impl From<archivehub_shared::error::ArchiveHubError> for AppError {
-    fn from(err: archivehub_shared::error::ArchiveHubError) -> Self {
+impl From<salsyx_shared::error::SalsyxError> for AppError {
+    fn from(err: salsyx_shared::error::SalsyxError) -> Self {
         match err {
-            archivehub_shared::error::ArchiveHubError::NotFound(full_name) => {
+            salsyx_shared::error::SalsyxError::NotFound(full_name) => {
                 AppError::NotFound { full_name }
             }
-            archivehub_shared::error::ArchiveHubError::NotArchived(full_name) => {
+            salsyx_shared::error::SalsyxError::NotArchived(full_name) => {
                 AppError::NotArchived { full_name }
             }
-            archivehub_shared::error::ArchiveHubError::UpstreamUnavailable(msg) => {
-                AppError::Upstream(msg)
-            }
-            archivehub_shared::error::ArchiveHubError::Integrity(msg) => {
+            salsyx_shared::error::SalsyxError::UpstreamUnavailable(msg) => AppError::Upstream(msg),
+            salsyx_shared::error::SalsyxError::Integrity(msg) => {
                 AppError::Internal(anyhow::anyhow!("integrity: {msg}"))
             }
-            archivehub_shared::error::ArchiveHubError::Validation(msg) => AppError::Validation(msg),
-            archivehub_shared::error::ArchiveHubError::Database(e) => AppError::Database(e),
-            archivehub_shared::error::ArchiveHubError::Internal(e) => AppError::Internal(e),
+            salsyx_shared::error::SalsyxError::Validation(msg) => AppError::Validation(msg),
+            salsyx_shared::error::SalsyxError::Database(e) => AppError::Database(e),
+            salsyx_shared::error::SalsyxError::Internal(e) => AppError::Internal(e),
         }
     }
 }

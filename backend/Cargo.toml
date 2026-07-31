@@ -1,17 +1,17 @@
 [package]
-name = "archivehub-api"
+name = "salsyx-api"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "ArchiveHub API server — search, resolve, and serve archived repositories."
+description = "Salsyx API server — search, resolve, and serve archived repositories."
 
 [[bin]]
-name = "archivehub-api"
+name = "salsyx-api"
 path = "src/main.rs"
 
 [dependencies]
-archivehub-shared = { path = "../shared" }
+salsyx-shared = { path = "../shared" }
 
 axum.workspace = true
 tokio.workspace = true

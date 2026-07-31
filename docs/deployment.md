@@ -1,4 +1,4 @@
-# ArchiveHub — Development & Deployment Guide
+# Salsyx — Development & Deployment Guide
 
 ## Prerequisites
 
@@ -18,15 +18,15 @@ docker compose up -d db          # or use your own Postgres
 Create the database (if not using docker compose):
 
 ```sql
-CREATE USER archivehub WITH PASSWORD 'archivehub' CREATEDB;
-CREATE DATABASE archivehub OWNER archivehub;
+CREATE USER salsyx WITH PASSWORD 'salsyx' CREATEDB;
+CREATE DATABASE salsyx OWNER salsyx;
 ```
 
 ### 2. Backend (API)
 
 ```bash
 cp backend/.env.example backend/.env
-cargo run -p archivehub-api
+cargo run -p salsyx-api
 ```
 
 Migrations apply automatically on startup (`AH_DATABASE__AUTO_MIGRATE=true`).
@@ -42,7 +42,7 @@ curl "localhost:8080/api/v1/search?q=linux"
 ### 3. Crawler (workers)
 
 ```bash
-cargo run -p archivehub-crawler
+cargo run -p salsyx-crawler
 ```
 
 The crawler polls `crawl_jobs`. Enqueue work with:
@@ -128,7 +128,7 @@ flyctl scale count 2
 ```bash
 cd frontend
 npx @cloudflare/next-on-pages
-npx wrangler pages deploy .vercel/output/static --project-name=archivehub
+npx wrangler pages deploy .vercel/output/static --project-name=salsyx
 ```
 
 Set `API_ORIGIN` to the deployed API URL. The API rewrite in

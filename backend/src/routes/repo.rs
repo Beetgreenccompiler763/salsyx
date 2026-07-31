@@ -16,12 +16,12 @@ use crate::state::AppState;
 
 #[derive(Debug, Serialize)]
 pub struct RepoResponse {
-    /// `github` if the repo is live, `archivehub` if served from archive.
+    /// `github` if the repo is live, `salsyx` if served from the Salsyx archive.
     pub source: &'static str,
     /// `live` | `archived` | `not_found` | `not_archived`
     pub status: &'static str,
-    pub repository: Option<archivehub_shared::repository::Repository>,
-    pub archive: Option<archivehub_shared::archive::Archive>,
+    pub repository: Option<salsyx_shared::repository::Repository>,
+    pub archive: Option<salsyx_shared::archive::Archive>,
     pub download_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,

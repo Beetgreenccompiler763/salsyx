@@ -1,4 +1,4 @@
-# ArchiveHub crawler workers — self-contained multi-stage build.
+# Salsyx crawler workers — self-contained multi-stage build.
 # The crawler shells out to `git` (clone --bare / bundle create), so the
 # runtime image includes git.
 
@@ -17,14 +17,14 @@ RUN mkdir -p shared/src backend/src crawler/src \
     && echo '// stub' > backend/src/lib.rs \
     && echo 'fn main() {}' > backend/src/main.rs \
     && echo 'fn main() {}' > crawler/src/main.rs \
-    && cargo build --release -p archivehub-api -p archivehub-crawler || true
+    && cargo build --release -p salsyx-api -p salsyx-crawler || true
 
 COPY shared shared
 COPY backend backend
 COPY crawler crawler
 
 RUN touch shared/src/lib.rs backend/src/lib.rs backend/src/main.rs crawler/src/main.rs \
-    && cargo build --release -p archivehub-api -p archivehub-crawler
+    && cargo build --release -p salsyx-api -p salsyx-crawler
 
 # ---------- runtime stage ----------
 FROM debian:bookworm-slim
@@ -34,9 +34,9 @@ RUN apt-get update \
 
 WORKDIR /app
 
-COPY --from=build /app/target/release/archivehub-crawler /usr/local/bin/archivehub-crawler
+COPY --from=build /app/target/release/salsyx-crawler /usr/local/bin/salsyx-crawler
 COPY backend/config/default.toml /app/config/default.toml
 
 ENV AH_APP__ENV=production
 
-CMD ["archivehub-crawler"]
+CMD ["salsyx-crawler"]

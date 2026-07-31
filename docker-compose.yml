@@ -1,4 +1,4 @@
-# Local development environment for ArchiveHub.
+# Local development environment for Salsyx.
 #
 # Runs the exact Postgres version used in production (Neon is Postgres 15/16+;
 # use the major version you deploy against — this file defaults to 16).
@@ -10,17 +10,17 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: archivehub-db
+    container_name: salsyx-db
     environment:
-      POSTGRES_USER: archivehub
-      POSTGRES_PASSWORD: archivehub
-      POSTGRES_DB: archivehub
+      POSTGRES_USER: salsyx
+      POSTGRES_PASSWORD: salsyx
+      POSTGRES_DB: salsyx
     ports:
       - "5432:5432"
     volumes:
-      - archivehub-pgdata:/var/lib/postgresql/data
+      - salsyx-pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U archivehub -d archivehub"]
+      test: ["CMD-SHELL", "pg_isready -U salsyx -d salsyx"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -29,10 +29,10 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    container_name: archivehub-api
+    container_name: salsyx-api
     environment:
       AH_APP__ENV: development
-      AH_DATABASE__URL: postgres://archivehub:archivehub@db:5432/archivehub
+      AH_DATABASE__URL: postgres://salsyx:salsyx@db:5432/salsyx
       AH_SERVER__ALLOWED_ORIGIN: "*"
     ports:
       - "8080:8080"
@@ -46,10 +46,10 @@ services:
     build:
       context: .
       dockerfile: crawler/Dockerfile
-    container_name: archivehub-crawler
+    container_name: salsyx-crawler
     environment:
       AH_APP__ENV: development
-      AH_DATABASE__URL: postgres://archivehub:archivehub@db:5432/archivehub
+      AH_DATABASE__URL: postgres://salsyx:salsyx@db:5432/salsyx
       AH_CRAWLER_CONCURRENCY: "2"
     depends_on:
       db:
@@ -62,7 +62,7 @@ services:
       context: frontend
       args:
         API_ORIGIN: http://api:8080
-    container_name: archivehub-web
+    container_name: salsyx-web
     environment:
       API_ORIGIN: http://api:8080
     ports:
@@ -71,4 +71,4 @@ services:
       - api
 
 volumes:
-  archivehub-pgdata:
+  salsyx-pgdata:

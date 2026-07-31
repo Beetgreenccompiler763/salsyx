@@ -1,4 +1,4 @@
-//! Canonical error type for the ArchiveHub domain layer.
+//! Canonical error type for the Salsyx domain layer.
 
 use thiserror::Error;
 
@@ -8,7 +8,7 @@ use thiserror::Error;
 /// itself is transport-agnostic so the crawler and storage layers can reuse
 /// it without depending on a web framework.
 #[derive(Debug, Error)]
-pub enum ArchiveHubError {
+pub enum SalsyxError {
     /// The requested resource was not found on the source *and* we hold no
     /// archive — the "this repository has not been archived" case.
     #[error("repository `{0}` does not exist on GitHub and has not been archived")]
@@ -40,4 +40,4 @@ pub enum ArchiveHubError {
 }
 
 /// Convenience alias.
-pub type Result<T> = std::result::Result<T, ArchiveHubError>;
+pub type Result<T> = std::result::Result<T, SalsyxError>;

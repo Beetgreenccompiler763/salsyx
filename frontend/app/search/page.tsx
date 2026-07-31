@@ -238,8 +238,8 @@ function SearchPageInner() {
             <p className="text-lg font-semibold text-pink">Something went wrong</p>
             <p className="mt-1 text-sm text-ink-dim">{error}</p>
             <p className="mt-4 text-xs text-ink-faint">
-              Is the ArchiveHub backend running? Start it with{" "}
-              <code className="font-mono text-neon">cargo run -p archivehub-api</code>.
+              Is the Salsyx backend running? Start it with{" "}
+              <code className="font-mono text-neon">cargo run -p salsyx-api</code>.
             </p>
           </div>
         )}

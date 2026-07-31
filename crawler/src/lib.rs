@@ -1,4 +1,4 @@
-//! ArchiveHub crawler.
+//! Salsyx crawler.
 //!
 //! A standalone background worker that runs the archive pipeline:
 //!

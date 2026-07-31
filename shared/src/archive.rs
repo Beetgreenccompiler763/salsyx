@@ -62,7 +62,7 @@ impl CompressionMethod {
 /// Where the archived blob lives in the object store.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StorageLocation {
-    /// Storage provider/bucket namespace, e.g. `r2:archivehub`.
+    /// Storage provider/bucket namespace, e.g. `r2:salsyx`.
     pub provider: String,
     /// Object key inside the provider's bucket.
     pub key: String,

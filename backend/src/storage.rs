@@ -425,9 +425,11 @@ mod r2 {
         }
 
         async fn public_url(&self, key: &str) -> Option<String> {
-            self.public_base_url
-                .as_ref()
-                .map(|base| format!("{}/{}", base.trim_end_matches('/'), key))
+            let base = self.public_base_url.as_ref()?.trim_end_matches('/');
+            if base.is_empty() {
+                return None;
+            }
+            Some(format!("{base}/{key}"))
         }
     }
 }
@@ -442,10 +444,10 @@ mod tests {
     #[tokio::test]
     async fn local_storage_roundtrip() {
         let storage = LocalStorage {
-            root: std::env::temp_dir().join(format!("archivehub-test-{}", uuid::Uuid::new_v4())),
+            root: std::env::temp_dir().join(format!("salsyx-test-{}", uuid::Uuid::new_v4())),
         };
 
-        let data = b"archivehub test payload".to_vec();
+        let data = b"salsyx test payload".to_vec();
         let checksum = storage.put("repo/test.bundle", &data).await.unwrap();
         assert_eq!(checksum.len(), 64);
 

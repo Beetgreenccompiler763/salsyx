@@ -52,7 +52,7 @@ export default function RepoPage() {
         if (e instanceof ApiError && e.status === 404) {
           // Backend treats "not found + not archived" as 404 with a message.
           setResult({
-            source: "archivehub",
+            source: "salsyx",
             status: "not_found",
             repository: null,
             archive: null,
@@ -178,7 +178,7 @@ function StatusBanner({ result }: { result: RepoResponse }) {
             {isLive
               ? "This repository is live on GitHub right now."
               : isArchived
-                ? "Deleted from GitHub — but ArchiveHub preserved it. Nothing is lost."
+                ? "Deleted from GitHub — but Salsyx preserved it. Nothing is lost."
                 : result.message ?? "GitHub returned 404 and no archive exists yet."}
           </p>
         </div>
@@ -388,7 +388,7 @@ function NotFoundView({
       </motion.div>
       <h2 className="mt-6 text-2xl font-black">This repository has not been archived</h2>
       <p className="mx-auto mt-2 max-w-md text-sm text-ink-dim">
-        GitHub says it doesn&apos;t exist anymore, and ArchiveHub doesn&apos;t have a preserved
+        GitHub says it doesn&apos;t exist anymore, and Salsyx doesn&apos;t have a preserved
         snapshot yet. That&apos;s exactly the gap we&apos;re closing — request an archive and the
         crawler will preserve it the next time it appears.
       </p>

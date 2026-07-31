@@ -1,4 +1,4 @@
-//! HTTP routes for the ArchiveHub API.
+//! HTTP routes for the Salsyx API.
 //!
 //! Endpoints (all under `/api/v1`):
 //!

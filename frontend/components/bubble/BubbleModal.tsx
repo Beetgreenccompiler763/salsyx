@@ -1,7 +1,7 @@
 "use client";
 
 // Futuristic profile modal shown when a bubble pops. Loads the user's real
-// archived repositories from ArchiveHub when available, otherwise shows a
+// archived repositories from Salsyx when available, otherwise shows a
 // graceful fallback with their GitHub link.
 
 import { motion, AnimatePresence } from "motion/react";
@@ -124,7 +124,7 @@ export function BubbleModal({
               </div>
             )}
 
-            {/* Archived repositories from ArchiveHub */}
+            {/* Archived repositories from Salsyx */}
             <div className="mt-5">
               <p className="mb-2 text-xs uppercase tracking-wider text-ink-faint">
                 Preserved repositories

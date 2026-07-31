@@ -36,7 +36,7 @@ export default function HomePage() {
           </h1>
 
           <p className="mx-auto mt-6 max-w-xl text-pretty text-base text-ink-dim md:text-lg">
-            ArchiveHub searches GitHub in real time, and if a repository is gone, we bring it
+            Salsyx searches GitHub in real time, and if a repository is gone, we bring it
             back from the archive. Browse, download, and preserve — forever.
           </p>
 

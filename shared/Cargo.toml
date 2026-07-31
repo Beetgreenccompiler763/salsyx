@@ -1,10 +1,10 @@
 [package]
-name = "archivehub-shared"
+name = "salsyx-shared"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "Shared types, constants, and utilities for the ArchiveHub platform."
+description = "Shared types, constants, and utilities for the Salsyx platform."
 
 [dependencies]
 serde.workspace = true

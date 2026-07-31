@@ -1,4 +1,4 @@
-//! ArchiveHub crawler — entry point.
+//! Salsyx crawler — entry point.
 //!
 //! Runs a pool of workers that poll `crawl_jobs` and execute the archive
 //! pipeline. Independent process from the API server; shares only the
@@ -6,8 +6,8 @@
 
 use std::sync::Arc;
 
-use archivehub_api::config::Config;
-use archivehub_crawler::{jobs, pipeline, DEFAULT_CONCURRENCY};
+use salsyx_api::config::Config;
+use salsyx_crawler::{jobs, pipeline, DEFAULT_CONCURRENCY};
 use sqlx::PgPool;
 use tracing::info;
 
@@ -20,12 +20,12 @@ async fn main() -> anyhow::Result<()> {
 
     info!(
         version = env!("CARGO_PKG_VERSION"),
-        "starting archivehub-crawler"
+        "starting salsyx-crawler"
     );
 
-    let pool = archivehub_api::db::connect(&config.database).await?;
-    let storage: Arc<dyn archivehub_api::storage::Storage> =
-        Arc::from(archivehub_api::storage::from_config(&config.storage)?);
+    let pool = salsyx_api::db::connect(&config.database).await?;
+    let storage: Arc<dyn salsyx_api::storage::Storage> =
+        Arc::from(salsyx_api::storage::from_config(&config.storage)?);
 
     let concurrency = std::env::var("AH_CRAWLER_CONCURRENCY")
         .ok()
@@ -51,7 +51,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 /// Infinite worker loop: claim a job, execute it, retry with backoff.
-async fn worker_loop(id: usize, pool: PgPool, storage: &dyn archivehub_api::storage::Storage) {
+async fn worker_loop(id: usize, pool: PgPool, storage: &dyn salsyx_api::storage::Storage) {
     info!(worker = id, "worker online");
 
     loop {
@@ -88,7 +88,7 @@ async fn worker_loop(id: usize, pool: PgPool, storage: &dyn archivehub_api::stor
 /// Dispatch a claimed job to the right handler.
 async fn execute_job(
     pool: &PgPool,
-    storage: &dyn archivehub_api::storage::Storage,
+    storage: &dyn salsyx_api::storage::Storage,
     job: &jobs::CrawlJob,
 ) -> anyhow::Result<()> {
     match job.job_type.as_str() {
@@ -114,9 +114,9 @@ fn init_tracing(env: &str) {
 
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
         if env == "production" {
-            EnvFilter::new("archivehub_crawler=info,info")
+            EnvFilter::new("salsyx_crawler=info,info")
         } else {
-            EnvFilter::new("archivehub_crawler=debug,debug")
+            EnvFilter::new("salsyx_crawler=debug,debug")
         }
     });
 

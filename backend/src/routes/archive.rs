@@ -21,7 +21,7 @@ use crate::state::AppState;
 
 #[derive(Debug, Serialize)]
 pub struct ArchiveResponse {
-    pub archive: archivehub_shared::archive::Archive,
+    pub archive: salsyx_shared::archive::Archive,
     pub download_url: String,
     pub storage_provider: String,
 }
@@ -107,7 +107,7 @@ pub async fn download(
             format!("attachment; filename=\"{filename}\""),
         )
         .header(header::CONTENT_LENGTH, row.size_bytes.to_string())
-        .header("x-archivehub-checksum", &row.checksum);
+        .header("x-salsyx-checksum", &row.checksum);
 
     // Best-effort range support: only full-range requests for now, but honor
     // the Accept-Ranges header so clients know resuming is possible.
@@ -119,14 +119,9 @@ pub async fn download(
     let archive_id = row.id;
     let bytes_sent = row.size_bytes;
     tokio::spawn(async move {
-        let _ = crate::db::record_download(
-            &pool,
-            archive_id,
-            "unknown",
-            "archivehub-download",
-            bytes_sent,
-        )
-        .await;
+        let _ =
+            crate::db::record_download(&pool, archive_id, "unknown", "salsyx-download", bytes_sent)
+                .await;
     });
 
     Ok(builder.body(body).expect("valid response"))
@@ -189,7 +184,7 @@ pub async fn create_archive(
     crate::db::enqueue_crawl_job(&state.pool, repository_id, Some(archive_id), "archive").await?;
 
     let queue = state.queue.clone();
-    let event = archivehub_shared::events::Event::ArchiveRepository { repository_id };
+    let event = salsyx_shared::events::Event::ArchiveRepository { repository_id };
     queue
         .send(event)
         .await

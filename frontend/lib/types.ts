@@ -1,4 +1,4 @@
-// TypeScript mirror of the ArchiveHub API contract (backend/openapi.json).
+// TypeScript mirror of the Salsyx API contract (backend/openapi.json).
 
 export interface RepositoryOwner {
   id: string;
@@ -76,7 +76,7 @@ export interface Archive {
 export type RepoStatus = "live" | "archived" | "not_found" | "not_archived";
 
 export interface RepoResponse {
-  source: "github" | "archivehub";
+  source: "github" | "salsyx";
   status: RepoStatus;
   repository?: Repository | null;
   archive?: Archive | null;

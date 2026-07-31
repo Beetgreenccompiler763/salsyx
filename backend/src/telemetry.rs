@@ -20,9 +20,9 @@ pub struct SentryGuard(#[allow(dead_code)] sentry::ClientInitGuard);
 pub fn init(app_env: &str) -> SentryGuard {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
         if app_env == "production" {
-            EnvFilter::new("archivehub_api=info,tower_http=info,sqlx=warn,info")
+            EnvFilter::new("salsyx_api=info,tower_http=info,sqlx=warn,info")
         } else {
-            EnvFilter::new("archivehub_api=debug,tower_http=debug,sqlx=debug,debug")
+            EnvFilter::new("salsyx_api=debug,tower_http=debug,sqlx=debug,debug")
         }
     });
 
@@ -60,9 +60,9 @@ pub fn init(app_env: &str) -> SentryGuard {
 pub fn init(app_env: &str) {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
         if app_env == "production" {
-            EnvFilter::new("archivehub_api=info,tower_http=info,sqlx=warn,info")
+            EnvFilter::new("salsyx_api=info,tower_http=info,sqlx=warn,info")
         } else {
-            EnvFilter::new("archivehub_api=debug,tower_http=debug,sqlx=debug,debug")
+            EnvFilter::new("salsyx_api=debug,tower_http=debug,sqlx=debug,debug")
         }
     });
 

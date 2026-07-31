@@ -12,7 +12,7 @@ const STEPS = [
     icon: Search,
     step: "01",
     title: "Search GitHub first",
-    body: "Paste any public repository. ArchiveHub queries GitHub in real time — if it still exists, you're one click from it.",
+    body: "Paste any public repository. Salsyx queries GitHub in real time — if it still exists, you're one click from it.",
     accent: "text-neon",
     ring: "group-hover:border-neon/50",
   },

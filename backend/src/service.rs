@@ -7,7 +7,7 @@
 //!     │
 //!     ├─ GitHub API says "exists" ──► return live GitHub metadata
 //!     │
-//!     └─ GitHub API says "404" ────► check ArchiveHub database
+//!     └─ GitHub API says "404" ────► check Salsyx database
 //!             │
 //!             ├─ archive exists ──► return archived snapshot
 //!             │
@@ -28,13 +28,13 @@ use crate::state::AppState;
 pub enum ResolveOutcome {
     /// Repository exists on GitHub; return live metadata + download URL.
     Live {
-        repository: archivehub_shared::repository::Repository,
+        repository: salsyx_shared::repository::Repository,
         download_url: String,
     },
     /// Repository is gone from GitHub but we have an archived snapshot.
     Archived {
-        repository: archivehub_shared::repository::Repository,
-        archive: archivehub_shared::archive::Archive,
+        repository: salsyx_shared::repository::Repository,
+        archive: salsyx_shared::archive::Archive,
         download_url: String,
     },
     /// Gone from GitHub and not archived.
@@ -111,7 +111,7 @@ async fn resolve_archived(state: &AppState, full_name: &str) -> Result<ResolveRe
     let Some(row) = row else {
         return Ok(ResolveResult {
             outcome: ResolveOutcome::NotFound,
-            source: "archivehub",
+            source: "salsyx",
         });
     };
 
@@ -131,21 +131,21 @@ async fn resolve_archived(state: &AppState, full_name: &str) -> Result<ResolveRe
                     archive,
                     download_url,
                 },
-                source: "archivehub",
+                source: "salsyx",
             });
         }
     }
 
     Ok(ResolveResult {
         outcome: ResolveOutcome::NotFound,
-        source: "archivehub",
+        source: "salsyx",
     })
 }
 
 /// Convert a storage key into a public download URL if the provider can.
 async fn archive_download_url(
     state: &AppState,
-    archive: &archivehub_shared::archive::Archive,
+    archive: &salsyx_shared::archive::Archive,
 ) -> Option<String> {
     state.storage.public_url(&archive.storage.key).await
 }
@@ -206,31 +206,31 @@ pub fn normalize_full_name_public(input: &str) -> Result<String, AppError> {
 }
 
 /// Map an archive row to the shared domain type.
-pub fn archive_row_to_domain(row: crate::db::ArchiveRow) -> archivehub_shared::archive::Archive {
-    archivehub_shared::archive::Archive {
+pub fn archive_row_to_domain(row: crate::db::ArchiveRow) -> salsyx_shared::archive::Archive {
+    salsyx_shared::archive::Archive {
         id: row.id,
         repository_id: row.repository_id,
         commit_ref: row.commit_ref,
         commit_count: row.commit_count,
         checksum: row.checksum,
         size_bytes: row.size_bytes,
-        storage: archivehub_shared::archive::StorageLocation {
+        storage: salsyx_shared::archive::StorageLocation {
             provider: row.storage_provider,
             key: row.storage_key,
         },
         compression: match row.compression_method.as_str() {
-            "zip" => archivehub_shared::archive::CompressionMethod::Zip,
-            "git_bundle" => archivehub_shared::archive::CompressionMethod::GitBundle,
-            "tar" => archivehub_shared::archive::CompressionMethod::Tar,
-            _ => archivehub_shared::archive::CompressionMethod::Custom,
+            "zip" => salsyx_shared::archive::CompressionMethod::Zip,
+            "git_bundle" => salsyx_shared::archive::CompressionMethod::GitBundle,
+            "tar" => salsyx_shared::archive::CompressionMethod::Tar,
+            _ => salsyx_shared::archive::CompressionMethod::Custom,
         },
         status: match row.status.as_str() {
-            "pending" => archivehub_shared::archive::ArchiveStatus::Pending,
-            "fetching" => archivehub_shared::archive::ArchiveStatus::Fetching,
-            "processing" => archivehub_shared::archive::ArchiveStatus::Processing,
-            "archived" => archivehub_shared::archive::ArchiveStatus::Archived,
-            "verification_failed" => archivehub_shared::archive::ArchiveStatus::VerificationFailed,
-            _ => archivehub_shared::archive::ArchiveStatus::Failed,
+            "pending" => salsyx_shared::archive::ArchiveStatus::Pending,
+            "fetching" => salsyx_shared::archive::ArchiveStatus::Fetching,
+            "processing" => salsyx_shared::archive::ArchiveStatus::Processing,
+            "archived" => salsyx_shared::archive::ArchiveStatus::Archived,
+            "verification_failed" => salsyx_shared::archive::ArchiveStatus::VerificationFailed,
+            _ => salsyx_shared::archive::ArchiveStatus::Failed,
         },
         deleted_at: row.deleted_at,
         error_message: row.error_message,

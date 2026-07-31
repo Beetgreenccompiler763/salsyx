@@ -1,4 +1,4 @@
-# ArchiveHub developer convenience targets.
+# Salsyx developer convenience targets.
 #
 #   make dev          # run everything (db, api, crawler, web) via docker compose
 #   make api          # run the API server locally (needs Postgres at AH_DATABASE__URL)
@@ -15,10 +15,10 @@ dev:
 	docker compose up --build
 
 api:
-	cargo run -p archivehub-api
+	cargo run -p salsyx-api
 
 crawler:
-	cargo run -p archivehub-crawler
+	cargo run -p salsyx-crawler
 
 web:
 	cd frontend && npm run dev
@@ -39,4 +39,4 @@ seed:
 	echo "Seeded. See /api/v1/stats"
 
 db-reset:
-	sudo -u postgres psql -d archivehub -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO archivehub; GRANT ALL ON SCHEMA public TO public;"
+	sudo -u postgres psql -d salsyx -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO salsyx; GRANT ALL ON SCHEMA public TO public;"

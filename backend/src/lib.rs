@@ -1,4 +1,4 @@
-//! ArchiveHub API server library.
+//! Salsyx API server library.
 //!
 //! Exposes the application as a library so integration tests can spin up
 //! routers without spawning a process. `main.rs` is a thin bootstrap layer.
@@ -15,4 +15,4 @@ pub mod storage;
 pub mod telemetry;
 
 /// Convenience re-export of the shared crate for internal modules.
-pub use archivehub_shared as shared;
+pub use salsyx_shared as shared;

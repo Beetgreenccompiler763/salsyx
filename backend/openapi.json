@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "ArchiveHub API",
+    "title": "Salsyx API",
     "description": "Search and preservation platform for public GitHub repositories. Nothing open-source should disappear forever.",
     "version": "0.1.0",
     "license": { "name": "MIT" }
@@ -71,7 +71,7 @@
       "get": {
         "tags": ["repository"],
         "summary": "Resolve a repository",
-        "description": "Checks GitHub first; if deleted, falls back to the ArchiveHub archive database.",
+        "description": "Checks GitHub first; if deleted, falls back to the Salsyx archive database.",
         "operationId": "resolveRepository",
         "parameters": [
           { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
@@ -261,7 +261,7 @@
       "RepoResponse": {
         "type": "object",
         "properties": {
-          "source": { "type": "string", "enum": ["github", "archivehub"] },
+          "source": { "type": "string", "enum": ["github", "salsyx"] },
           "status": { "type": "string", "enum": ["live", "archived", "not_found"] },
           "repository": { "type": "object" },
           "archive": { "type": "object" },

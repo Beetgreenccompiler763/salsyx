@@ -21,7 +21,7 @@ pub enum RepositorySource {
 #[serde(rename_all = "snake_case")]
 pub enum Visibility {
     Public,
-    // `private` / `internal` are not archived by ArchiveHub but the enum
+    // `private` / `internal` are not archived by Salsyx but the enum
     // allows the schema to store them faithfully if ever needed.
     Private,
     Internal,

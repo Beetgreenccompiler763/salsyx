@@ -38,7 +38,7 @@ export function Nav() {
             <Archive className="size-4 text-neon" />
           </span>
           <span className="text-sm font-semibold tracking-tight">
-            Archive<span className="text-gradient">Hub</span>
+            Sal<span className="text-gradient">syx</span>
           </span>
         </Link>
 

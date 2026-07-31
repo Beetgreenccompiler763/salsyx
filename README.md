@@ -1,8 +1,8 @@
-# ArchiveHub
+# Salsyx
 
 > **Nothing open-source should disappear forever.**
 
-ArchiveHub is a search engine and preservation platform for public GitHub
+Salsyx is a search engine and preservation platform for public GitHub
 repositories. Search any repository — if it still exists you get taken to
 GitHub; if it was deleted, we restore it from the archive. Full git history,
 checksums, and a beautiful futuristic interface.
@@ -19,7 +19,7 @@ checksums, and a beautiful futuristic interface.
 ```
 User searches → GitHub first
    ├─ exists?    → redirect to GitHub / download
-   ├─ deleted?   → ArchiveHub database?
+   ├─ deleted?   → Salsyx database?
    │                ├─ archived?  → browse files / download the preserved bundle
    │                └─ no        → "This repository has not been archived."
    └─ rate-limited → graceful fallback to the archive database
@@ -57,8 +57,8 @@ horizontally scalable) plus an in-memory event channel for fast feedback.
 
 ```bash
 docker compose up -d db          # Postgres 16
-cargo run -p archivehub-api      # API  → http://localhost:8080
-cargo run -p archivehub-crawler  # workers
+cargo run -p salsyx-api      # API  → http://localhost:8080
+cargo run -p salsyx-crawler  # workers
 cd frontend && npm install && npm run dev   # UI → http://localhost:3000
 ```
 

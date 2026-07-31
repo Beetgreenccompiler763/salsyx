@@ -6,8 +6,8 @@ members = ["shared", "backend", "crawler"]
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-authors = ["ArchiveHub Contributors"]
-repository = "https://github.com/archivehub/archivehub"
+authors = ["Jamal Tiliouan", "Salma Zelmati"]
+repository = "https://github.com/lmdelm-dev/salsyx"
 
 [workspace.dependencies]
 # Web framework
@@ -58,8 +58,8 @@ parking_lot = "0.12"
 # Async messaging for worker queues (in-memory + optional external)
 async-channel = "2"
 
-# ArchiveHub internal crates
-archivehub-shared = { path = "shared" }
+# Salsyx internal crates
+salsyx-shared = { path = "shared" }
 
 [profile.release]
 opt-level = 3

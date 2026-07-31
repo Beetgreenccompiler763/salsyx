@@ -1,8 +1,8 @@
-# ArchiveHub — Architecture
+# Salsyx — Architecture
 
 > "Nothing open-source should disappear forever."
 
-ArchiveHub is a search engine and preservation platform for public GitHub
+Salsyx is a search engine and preservation platform for public GitHub
 repositories. This document describes the system architecture, the reasoning
 behind each decision, and the roadmap that the codebase is designed to support.
 
@@ -82,7 +82,7 @@ backend/        The API server.
 crawler/        Independent worker processes.
   src/jobs.rs      Claim/complete/fail/enqueue crawl_jobs (retry w/ backoff).
   src/pipeline.rs  git clone → bundle → checksum → upload → record.
-  ── shares the database and storage through archivehub-api's modules ──
+  ── shares the database and storage through salsyx-api's modules ──
 
 frontend/       Next.js app (App Router, TypeScript, Tailwind v4).
   lib/api.ts       Typed client for the REST API.
@@ -92,7 +92,7 @@ frontend/       Next.js app (App Router, TypeScript, Tailwind v4).
 **Rules**
 - HTTP handlers never touch SQL or storage directly.
 - Domain types (`shared/`) never depend on a web framework or database driver.
-- The crawler is a *consumer* of `archivehub-api`'s low-level modules; it is
+- The crawler is a *consumer* of `salsyx-api`'s low-level modules; it is
   not required to run for the API to serve live lookups.
 - GraphQL can be added behind `/graphql` calling the same `service.rs`
   functions — the services don't know what transport is in front of them.
@@ -131,7 +131,7 @@ Key design choices:
 The spec says "do not simply store ZIP files". The pipeline produces
 **git bundles** instead:
 
-| Property                | GitHub ZIP                    | ArchiveHub git bundle            |
+| Property                | GitHub ZIP                    | Salsyx git bundle            |
 | ----------------------- | ----------------------------- | -------------------------------- |
 | History                 | ❌ current tree only          | ✅ all commits, all refs         |
 | `.git` metadata         | ❌                            | ✅                                |

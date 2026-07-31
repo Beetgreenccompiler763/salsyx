@@ -1,4 +1,4 @@
-# Fly.io configuration for the ArchiveHub crawler workers.
+# Fly.io configuration for the Salsyx crawler workers.
 #
 # The crawler is a separate, horizontally-scalable process: it only needs
 # the database + storage, and it has no public HTTP port.
@@ -24,4 +24,4 @@ app = "archivehub-crawler"
   destination = "/data"
 
 [processes]
-  worker = "archivehub-crawler"
+  worker = "salsyx-crawler"

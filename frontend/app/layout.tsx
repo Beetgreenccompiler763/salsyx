@@ -6,14 +6,14 @@ import { Footer } from "@/components/ui/Footer";
 
 export const metadata: Metadata = {
   title: {
-    default: "ArchiveHub — nothing open-source should disappear forever",
-    template: "%s · ArchiveHub",
+    default: "Salsyx — nothing open-source should disappear forever",
+    template: "%s · Salsyx",
   },
   description:
     "Search and preservation platform for public GitHub repositories. Browse, download, and archive code before it disappears.",
   keywords: ["github", "archive", "preservation", "open source", "search"],
   openGraph: {
-    title: "ArchiveHub",
+    title: "Salsyx",
     description: "Nothing open-source should disappear forever.",
     type: "website",
   },

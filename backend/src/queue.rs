@@ -5,8 +5,8 @@
 //! abstracts the transport: swapping in Redis streams or Postgres
 //! LISTEN/NOTIFY later only changes this module.
 
-use archivehub_shared::events::Event;
 use async_channel::{Receiver, Sender};
+use salsyx_shared::events::Event;
 
 /// Thread-safe wrapper around the event channel.
 #[derive(Clone)]

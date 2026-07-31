@@ -2,7 +2,7 @@
 //!
 //! The core philosophy is *verify before trusting*: every blob is hashed at
 //! rest, the hash is stored next to the object key, and any read path
-//! re-verifies. This is what lets ArchiveHub promise "nothing disappears".
+//! re-verifies. This is what lets Salsyx promise "nothing disappears".
 
 use std::path::Path;
 use std::process::Command;
@@ -11,7 +11,7 @@ use sha2::{Digest, Sha256};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use archivehub_api::storage::Storage;
+use salsyx_api::storage::Storage;
 
 /// One `archive` job: clone, bundle, store, record.
 ///

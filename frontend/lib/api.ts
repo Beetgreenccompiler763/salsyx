@@ -1,4 +1,4 @@
-// Thin, typed client for the ArchiveHub REST API.
+// Thin, typed client for the Salsyx REST API.
 //
 // The Next.js dev/prod proxy (next.config.mjs) forwards `/api/*` to the Rust
 // backend, so the frontend always calls relative URLs and stays deployable

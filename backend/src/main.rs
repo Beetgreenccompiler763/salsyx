@@ -1,4 +1,4 @@
-//! ArchiveHub API server — entry point.
+//! Salsyx API server — entry point.
 //!
 //! Bootstrap order:
 //! 1. Load configuration (`AH_*` env vars / `.env` / `config/default.toml`)
@@ -7,10 +7,10 @@
 //! 4. Build the storage backend and GitHub client
 //! 5. Start the HTTP server with CORS + trace middleware
 
-use archivehub_api::config::Config;
-use archivehub_api::state::AppState;
-use archivehub_api::telemetry;
 use axum::http::HeaderName;
+use salsyx_api::config::Config;
+use salsyx_api::state::AppState;
+use salsyx_api::telemetry;
 use tower::ServiceBuilder;
 use tower_http::{
     catch_panic::CatchPanicLayer,
@@ -31,7 +31,7 @@ async fn main() -> anyhow::Result<()> {
     #[cfg(not(feature = "sentry"))]
     telemetry::init(&config.app.env);
 
-    tracing::info!(version = env!("CARGO_PKG_VERSION"), env = %config.app.env, "starting archivehub-api");
+    tracing::info!(version = env!("CARGO_PKG_VERSION"), env = %config.app.env, "starting salsyx-api");
 
     let state = AppState::from_config(config.clone()).await?;
 
@@ -48,7 +48,7 @@ async fn main() -> anyhow::Result<()> {
         )
     };
 
-    let app = archivehub_api::routes::build(&config, state).layer(
+    let app = salsyx_api::routes::build(&config, state).layer(
         ServiceBuilder::new()
             .layer(SetRequestIdLayer::new(
                 HeaderName::from_static("x-request-id"),
