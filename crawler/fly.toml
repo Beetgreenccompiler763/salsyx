@@ -14,10 +14,10 @@ app = "salsyx-crawler"
 [env]
   AH_APP__ENV = "production"
   AH_CRAWLER_CONCURRENCY = "4"
+  # R2 account id + endpoint are set as Fly secrets (AH_STORAGE__R2_ACCOUNT_ID,
+  # AH_STORAGE__R2_ENDPOINT) to keep Cloudflare account details out of VCS.
   AH_STORAGE__PROVIDER = "r2"
   AH_STORAGE__R2_BUCKET = "salsyx"
-  AH_STORAGE__R2_ACCOUNT_ID = "1680f85d59f91d8b1a4755c547b41b4d"
-  AH_STORAGE__R2_ENDPOINT = "https://1680f85d59f91d8b1a4755c547b41b4d.r2.cloudflarestorage.com"
 
 [[mounts]]
   source = "salsyx_storage"
