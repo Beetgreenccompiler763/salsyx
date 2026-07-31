@@ -109,7 +109,7 @@ by `AH_`-prefixed env vars (`AH_SERVER__PORT=9000`, `AH_DATABASE__URL=…`).
 ```bash
 cd backend
 flyctl launch
-flyctl secrets set AH_DATABASE__URL=postgres://…@…/archivehub
+flyctl secrets set AH_DATABASE__URL=postgres://…@…/salsyx
 flyctl secrets set AH_GITHUB__TOKEN=…
 flyctl secrets set AH_GITHUB__WEBHOOK_SECRET=…   # enables signature verification
 flyctl secrets set AH_STORAGE__PROVIDER=r2 AH_STORAGE__R2_ACCOUNT_ID=… …
@@ -145,7 +145,7 @@ API boot; disable auto-migrate for the crawler to avoid races
 
 ### Storage → Cloudflare R2
 
-1. Create a bucket (e.g. `archivehub`).
+1. Create a bucket (e.g. `salsyx`).
 2. Create an R2 API token (S3-compatible).
 3. Set the `AH_STORAGE__R2_*` secrets on API + crawler.
 4. Optionally set `AH_STORAGE__R2_PUBLIC_BASE_URL` to a public bucket URL so

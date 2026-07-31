@@ -6,7 +6,7 @@
 #   flyctl launch --config crawler/fly.toml
 #   flyctl scale count 3   # scale workers independently
 
-app = "archivehub-crawler"
+app = "salsyx-crawler"
 
 [build]
   dockerfile = "Dockerfile"
@@ -15,12 +15,12 @@ app = "archivehub-crawler"
   AH_APP__ENV = "production"
   AH_CRAWLER_CONCURRENCY = "4"
   AH_STORAGE__PROVIDER = "r2"
-  AH_STORAGE__R2_BUCKET = "archivehub"
+  AH_STORAGE__R2_BUCKET = "salsyx"
   AH_STORAGE__R2_ACCOUNT_ID = "1680f85d59f91d8b1a4755c547b41b4d"
   AH_STORAGE__R2_ENDPOINT = "https://1680f85d59f91d8b1a4755c547b41b4d.r2.cloudflarestorage.com"
 
 [[mounts]]
-  source = "archivehub_storage"
+  source = "salsyx_storage"
   destination = "/data"
 
 [processes]
