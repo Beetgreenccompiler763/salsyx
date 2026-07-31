@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["shared", "backend", "crawler"]
+members = ["shared", "backend", "crawler", "aahl"]
 
 [workspace.package]
 version = "0.1.0"
