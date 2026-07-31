@@ -13,19 +13,22 @@ COPY Cargo.toml Cargo.lock ./
 COPY shared/Cargo.toml shared/
 COPY backend/Cargo.toml backend/
 COPY crawler/Cargo.toml crawler/
+COPY aahl/Cargo.toml aahl/
 
-RUN mkdir -p shared/src backend/src crawler/src \
+RUN mkdir -p shared/src backend/src crawler/src aahl/src \
     && echo '// stub' > shared/src/lib.rs \
     && echo '// stub' > backend/src/lib.rs \
     && echo 'fn main() {}' > backend/src/main.rs \
     && echo 'fn main() {}' > crawler/src/main.rs \
+    && echo '// stub' > aahl/src/lib.rs \
     && cargo build --release -p salsyx-api -p salsyx-crawler || true
 
 COPY shared shared
 COPY backend backend
 COPY crawler crawler
+COPY aahl aahl
 
-RUN touch shared/src/lib.rs backend/src/lib.rs backend/src/main.rs crawler/src/main.rs \
+RUN touch shared/src/lib.rs backend/src/lib.rs backend/src/main.rs crawler/src/main.rs aahl/src/lib.rs \
     && cargo build --release -p salsyx-api -p salsyx-crawler
 
 # ---------- runtime stage ----------
