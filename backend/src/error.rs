@@ -31,6 +31,9 @@ pub enum AppError {
     #[error("repository `{full_name}` exists but has no archive yet")]
     NotArchived { full_name: String },
 
+    #[error("archive `{id}` has been deleted")]
+    Gone { id: String },
+
     #[error("upstream service unavailable: {0}")]
     Upstream(String),
 
@@ -55,6 +58,7 @@ impl AppError {
         match self {
             AppError::NotFound { .. } => StatusCode::NOT_FOUND,
             AppError::NotArchived { .. } => StatusCode::NOT_FOUND,
+            AppError::Gone { .. } => StatusCode::GONE,
             AppError::Upstream(_) => StatusCode::BAD_GATEWAY,
             AppError::Validation(_) => StatusCode::BAD_REQUEST,
             AppError::RateLimited => StatusCode::TOO_MANY_REQUESTS,
@@ -68,6 +72,7 @@ impl AppError {
         match self {
             AppError::NotFound { .. } => "not_found",
             AppError::NotArchived { .. } => "not_archived",
+            AppError::Gone { .. } => "gone",
             AppError::Upstream(_) => "upstream_unavailable",
             AppError::Validation(_) => "invalid_input",
             AppError::RateLimited => "rate_limited",

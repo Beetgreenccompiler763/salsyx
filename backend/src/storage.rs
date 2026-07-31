@@ -187,7 +187,6 @@ mod r2 {
         client: reqwest::Client,
         endpoint: String,
         bucket: String,
-        account_id: String,
         access_key_id: String,
         secret_access_key: String,
         public_base_url: Option<String>,
@@ -221,38 +220,48 @@ mod r2 {
                 client: reqwest::Client::new(),
                 endpoint,
                 bucket,
-                account_id,
                 access_key_id,
                 secret_access_key,
                 public_base_url: config.r2_public_base_url.clone(),
             })
         }
 
-        /// The S3 object URL for `key`.
+        /// The S3 object URL for `key` (path-style, bucket as first segment).
         fn object_url(&self, key: &str) -> String {
             format!("{}/{}/{}", self.endpoint, self.bucket, key)
         }
 
-        /// Minimal AWS Signature V4 signer for PUT/GET requests.
-        fn sign(&self, method: &str, key: &str, now: &chrono::DateTime<chrono::Utc>) -> String {
+        /// Host component of the endpoint (used in the SigV4 `host` header).
+        fn endpoint_host(&self) -> &str {
+            self.endpoint
+                .trim_start_matches("https://")
+                .trim_start_matches("http://")
+        }
+
+        /// Minimal AWS Signature V4 signer for PUT/GET/HEAD/DELETE requests.
+        fn sign(
+            &self,
+            method: &str,
+            key: &str,
+            payload_hash: &str,
+            now: &chrono::DateTime<chrono::Utc>,
+        ) -> String {
             let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
             let date_stamp = now.format("%Y%m%d").to_string();
             let region = "auto";
             let service = "s3";
 
-            let canonical_uri = format!("/{}", key);
+            // Path-style addressing: the canonical URI includes the bucket.
+            let canonical_uri = format!("/{}/{}", self.bucket, key);
             let canonical_query = "";
             let canonical_headers = format!(
-                "host:{}.r2.cloudflarestorage.com\nx-amz-content-sha256:{}\nx-amz-date:{}\n",
-                self.account_id,
-                hex::encode(Sha256::digest(b"")),
-                amz_date
+                "host:{host}\nx-amz-content-sha256:{payload_hash}\nx-amz-date:{amz_date}\n",
+                host = self.endpoint_host(),
             );
             let signed_headers = "host;x-amz-content-sha256;x-amz-date";
 
             let canonical_request = format!(
-                "{method}\n{canonical_uri}\n{canonical_query}\n{canonical_headers}\n{signed_headers}\n{}",
-                hex::encode(Sha256::digest(b""))
+                "{method}\n{canonical_uri}\n{canonical_query}\n{canonical_headers}\n{signed_headers}\n{payload_hash}"
             );
 
             let scope = format!("{date_stamp}/{region}/{service}/aws4_request");
@@ -290,14 +299,15 @@ mod r2 {
         #[instrument(skip(self, bytes), fields(key = %key, size = bytes.len()))]
         async fn put(&self, key: &str, bytes: &[u8]) -> Result<String, StorageError> {
             let now = chrono::Utc::now();
-            let auth = self.sign("PUT", key, &now);
+            let payload_hash = hex::encode(Sha256::digest(bytes));
+            let auth = self.sign("PUT", key, &payload_hash, &now);
 
             let resp = self
                 .client
                 .put(self.object_url(key))
                 .header("Authorization", auth)
                 .header("x-amz-date", now.format("%Y%m%dT%H%M%SZ").to_string())
-                .header("x-amz-content-sha256", hex::encode(Sha256::digest(bytes)))
+                .header("x-amz-content-sha256", &payload_hash)
                 .body(bytes.to_vec())
                 .send()
                 .await
@@ -322,13 +332,15 @@ mod r2 {
             expected_checksum: Option<&str>,
         ) -> Result<StoredBlob, StorageError> {
             let now = chrono::Utc::now();
-            let auth = self.sign("GET", key, &now);
+            let payload_hash = hex::encode(Sha256::digest(b""));
+            let auth = self.sign("GET", key, &payload_hash, &now);
 
             let resp = self
                 .client
                 .get(self.object_url(key))
                 .header("Authorization", auth)
                 .header("x-amz-date", now.format("%Y%m%dT%H%M%SZ").to_string())
+                .header("x-amz-content-sha256", &payload_hash)
                 .send()
                 .await
                 .map_err(|e| StorageError::Transport(e.to_string()))?;
@@ -368,13 +380,15 @@ mod r2 {
 
         async fn exists(&self, key: &str) -> Result<bool, StorageError> {
             let now = chrono::Utc::now();
-            let auth = self.sign("HEAD", key, &now);
+            let payload_hash = hex::encode(Sha256::digest(b""));
+            let auth = self.sign("HEAD", key, &payload_hash, &now);
 
             let resp = self
                 .client
                 .head(self.object_url(key))
                 .header("Authorization", auth)
                 .header("x-amz-date", now.format("%Y%m%dT%H%M%SZ").to_string())
+                .header("x-amz-content-sha256", &payload_hash)
                 .send()
                 .await
                 .map_err(|e| StorageError::Transport(e.to_string()))?;
@@ -384,13 +398,15 @@ mod r2 {
 
         async fn delete(&self, key: &str) -> Result<(), StorageError> {
             let now = chrono::Utc::now();
-            let auth = self.sign("DELETE", key, &now);
+            let payload_hash = hex::encode(Sha256::digest(b""));
+            let auth = self.sign("DELETE", key, &payload_hash, &now);
 
             let resp = self
                 .client
                 .delete(self.object_url(key))
                 .header("Authorization", auth)
                 .header("x-amz-date", now.format("%Y%m%dT%H%M%SZ").to_string())
+                .header("x-amz-content-sha256", &payload_hash)
                 .send()
                 .await
                 .map_err(|e| StorageError::Transport(e.to_string()))?;

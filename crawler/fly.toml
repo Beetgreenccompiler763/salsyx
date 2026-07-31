@@ -14,8 +14,10 @@ app = "archivehub-crawler"
 [env]
   AH_APP__ENV = "production"
   AH_CRAWLER_CONCURRENCY = "4"
-  AH_STORAGE__PROVIDER = "local"
-  AH_STORAGE__LOCAL_ROOT = "/data/archives"
+  AH_STORAGE__PROVIDER = "r2"
+  AH_STORAGE__R2_BUCKET = "archivehub"
+  AH_STORAGE__R2_ACCOUNT_ID = "1680f85d59f91d8b1a4755c547b41b4d"
+  AH_STORAGE__R2_ENDPOINT = "https://1680f85d59f91d8b1a4755c547b41b4d.r2.cloudflarestorage.com"
 
 [[mounts]]
   source = "archivehub_storage"

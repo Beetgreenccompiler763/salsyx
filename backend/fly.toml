@@ -17,9 +17,11 @@ app = "archivehub-api"
   AH_SERVER__HOST = "0.0.0.0"
   AH_SERVER__PORT = "8080"
   # Allow the frontend's origin. Swap for your Pages project domain.
-  AH_SERVER__ALLOWED_ORIGIN = "https://archivehub.pages.dev"
-  AH_STORAGE__PROVIDER = "local"
-  AH_STORAGE__LOCAL_ROOT = "/data/archives"
+  AH_SERVER__ALLOWED_ORIGIN = "https://archivehub-2qg.pages.dev"
+  AH_STORAGE__PROVIDER = "r2"
+  AH_STORAGE__R2_BUCKET = "archivehub"
+  AH_STORAGE__R2_ACCOUNT_ID = "1680f85d59f91d8b1a4755c547b41b4d"
+  AH_STORAGE__R2_ENDPOINT = "https://1680f85d59f91d8b1a4755c547b41b4d.r2.cloudflarestorage.com"
 
 [http_service]
   internal_port = 8080

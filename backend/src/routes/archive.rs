@@ -37,6 +37,10 @@ pub async fn get_archive(
             full_name: format!("archive {id}"),
         })?;
 
+    if row.deleted_at.is_some() {
+        return Err(crate::error::AppError::Gone { id: id.to_string() });
+    }
+
     if row.status != "archived" {
         return Err(crate::error::AppError::NotFound {
             full_name: format!("archive {id} (status: {})", row.status),
@@ -70,6 +74,10 @@ pub async fn download(
         .ok_or_else(|| crate::error::AppError::NotFound {
             full_name: format!("archive {id}"),
         })?;
+
+    if row.deleted_at.is_some() {
+        return Err(crate::error::AppError::Gone { id: id.to_string() });
+    }
 
     if row.status != "archived" {
         return Err(crate::error::AppError::NotFound {
