@@ -16,15 +16,41 @@ use crate::state::AppState;
 
 #[derive(Debug, Serialize)]
 pub struct RepoResponse {
-    /// `github` if the repo is live, `salsyx` if served from the Salsyx archive.
+    /// `github` if the repo is live, `external` if served by an archive
+    /// provider, `salsyx` if served from the Salsyx archive.
     pub source: &'static str,
-    /// `live` | `archived` | `not_found` | `not_archived`
+    /// `live` | `archived` | `external` | `not_found` | `not_archived`
     pub status: &'static str,
     pub repository: Option<salsyx_shared::repository::Repository>,
     pub archive: Option<salsyx_shared::archive::Archive>,
     pub download_url: Option<String>,
+    /// Present when an external provider holds an archived copy.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_archive: Option<crate::providers::ExternalArchive>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
+}
+
+impl RepoResponse {
+    fn new(
+        source: &'static str,
+        status: &'static str,
+        repository: Option<salsyx_shared::repository::Repository>,
+        archive: Option<salsyx_shared::archive::Archive>,
+        download_url: Option<String>,
+        external_archive: Option<crate::providers::ExternalArchive>,
+        message: Option<String>,
+    ) -> Self {
+        Self {
+            source,
+            status,
+            repository,
+            archive,
+            download_url,
+            external_archive,
+            message,
+        }
+    }
 }
 
 /// `GET /api/v1/repo/{owner}/{repo}`
@@ -39,36 +65,51 @@ pub async fn resolve(
         ResolveOutcome::Live {
             repository,
             download_url,
-        } => Ok(Json(RepoResponse {
-            source: result.source,
-            status: "live",
-            repository: Some(repository),
-            archive: None,
-            download_url: Some(download_url),
-            message: None,
-        })),
+        } => Ok(Json(RepoResponse::new(
+            result.source,
+            "live",
+            Some(repository),
+            None,
+            Some(download_url),
+            None,
+            None,
+        ))),
         ResolveOutcome::Archived {
             repository,
             archive,
             download_url,
-        } => Ok(Json(RepoResponse {
-            source: result.source,
-            status: "archived",
-            repository: Some(repository),
-            archive: Some(archive),
-            download_url: Some(download_url),
-            message: None,
-        })),
-        ResolveOutcome::NotFound => Ok(Json(RepoResponse {
-            source: result.source,
-            status: "not_found",
-            repository: None,
-            archive: None,
-            download_url: None,
-            message: Some(format!(
+        } => Ok(Json(RepoResponse::new(
+            result.source,
+            "archived",
+            Some(repository),
+            Some(archive),
+            Some(download_url),
+            None,
+            None,
+        ))),
+        ResolveOutcome::ExternalArchived { full_name, archive } => Ok(Json(RepoResponse::new(
+            result.source,
+            "external",
+            None,
+            None,
+            archive.download_url.clone(),
+            Some(archive),
+            Some(format!(
+                "`{full_name}` no longer exists on GitHub but was preserved by {}.",
+                "an archive provider"
+            )),
+        ))),
+        ResolveOutcome::NotFound => Ok(Json(RepoResponse::new(
+            result.source,
+            "not_found",
+            None,
+            None,
+            None,
+            None,
+            Some(format!(
                 "`{full_name}` was not found on GitHub and has not been archived."
             )),
-        })),
+        ))),
     }
 }
 
@@ -95,6 +136,7 @@ pub async fn refresh(
     let (status, archive_id) = match &result.outcome {
         ResolveOutcome::Live { .. } => ("live", None),
         ResolveOutcome::Archived { archive, .. } => ("archived", Some(archive.id)),
+        ResolveOutcome::ExternalArchived { .. } => ("external", None),
         ResolveOutcome::NotFound => ("not_found", None),
     };
 

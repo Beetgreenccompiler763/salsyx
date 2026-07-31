@@ -37,6 +37,11 @@ pub enum ResolveOutcome {
         archive: salsyx_shared::archive::Archive,
         download_url: String,
     },
+    /// Gone from GitHub, but an external archive provider holds a copy.
+    ExternalArchived {
+        full_name: String,
+        archive: crate::providers::ExternalArchive,
+    },
     /// Gone from GitHub and not archived.
     NotFound,
 }
@@ -114,10 +119,26 @@ pub async fn resolve_repository(
 }
 
 /// Look up the local record + latest archive for a deleted repository.
+///
+/// Resolution order once GitHub reports the repository is gone:
+/// 1. External providers (Software Heritage → Archive.org → Wayback).
+/// 2. The local AAHL/git-bundle archive database.
 async fn resolve_archived(state: &AppState, full_name: &str) -> Result<ResolveResult, AppError> {
     // Mark as deleted locally so search surfaces it as archived-only.
     let _ = crate::db::mark_repository_deleted(&state.pool, full_name).await;
 
+    // 1. Ask the external provider chain first.
+    if let Some(archive) = crate::providers::resolve_external(&state.providers, full_name).await {
+        return Ok(ResolveResult {
+            outcome: ResolveOutcome::ExternalArchived {
+                full_name: full_name.to_string(),
+                archive,
+            },
+            source: "external",
+        });
+    }
+
+    // 2. Fall back to the local archive database.
     let row = crate::db::find_repository(&state.pool, full_name).await?;
 
     let Some(row) = row else {

@@ -36,3 +36,7 @@ r2_public_base_url = ""
 [queue]
 capacity = 1024
 worker_concurrency = 4
+
+[providers]
+# Provider slugs to skip in the resolution chain (e.g. ["archive_org"]).
+disabled = []

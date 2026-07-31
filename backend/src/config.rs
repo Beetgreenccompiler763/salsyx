@@ -28,6 +28,16 @@ pub struct Config {
     pub storage: StorageConfig,
     pub queue: QueueConfig,
     pub app: AppConfig,
+    pub providers: ProvidersConfig,
+}
+
+/// External archive providers.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ProvidersConfig {
+    /// Provider slugs to skip in the resolution chain, e.g. `["archive_org"]`.
+    /// Defaults to empty (all providers enabled).
+    #[serde(default)]
+    pub disabled: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
