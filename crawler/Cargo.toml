@@ -1,0 +1,33 @@
+[package]
+name = "archivehub-crawler"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "ArchiveHub background crawler — monitors, tracks, and archives repositories before they disappear."
+
+[[bin]]
+name = "archivehub-crawler"
+path = "src/main.rs"
+
+[dependencies]
+archivehub-shared = { path = "../shared" }
+archivehub-api = { path = "../backend" }
+
+tokio.workspace = true
+sqlx.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+figment.workspace = true
+dotenvy.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+sha2.workspace = true
+hex.workspace = true
+tempfile = "3"
+
+[dev-dependencies]
+tokio.workspace = true

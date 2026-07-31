@@ -1,0 +1,69 @@
+[workspace]
+resolver = "2"
+members = ["shared", "backend", "crawler"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["ArchiveHub Contributors"]
+repository = "https://github.com/archivehub/archivehub"
+
+[workspace.dependencies]
+# Web framework
+axum = { version = "0.8", features = ["macros", "multipart", "json"] }
+tokio = { version = "1", features = ["full"] }
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6", features = ["trace", "cors", "compression-gzip", "request-id", "catch-panic", "timeout"] }
+
+# Database
+sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "json", "chrono", "uuid", "macros"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json", "rustls-tls", "gzip", "stream"], default-features = false }
+
+# Observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "fmt"] }
+tracing-opentelemetry = "0.28"
+opentelemetry = { version = "0.27", features = ["metrics"] }
+opentelemetry-otlp = { version = "0.27", features = ["trace", "metrics"] }
+
+# Errors & config
+thiserror = "2"
+anyhow = "1"
+figment = { version = "0.10", features = ["env", "toml"] }
+dotenvy = "0.15"
+
+# IDs & time
+uuid = { version = "1", features = ["v4", "serde"] }
+ulid = { version = "1", features = ["serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Utility
+url = "2"
+sha2 = "0.10"
+hex = "0.4"
+async-trait = "0.1"
+futures = "0.3"
+futures-util = "0.3"
+once_cell = "1"
+regex = "1"
+parking_lot = "0.12"
+
+# Async messaging for worker queues (in-memory + optional external)
+async-channel = "2"
+
+# ArchiveHub internal crates
+archivehub-shared = { path = "shared" }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"

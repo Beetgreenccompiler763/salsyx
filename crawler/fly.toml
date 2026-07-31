@@ -1,0 +1,25 @@
+# Fly.io configuration for the ArchiveHub crawler workers.
+#
+# The crawler is a separate, horizontally-scalable process: it only needs
+# the database + storage, and it has no public HTTP port.
+#
+#   flyctl launch --config crawler/fly.toml
+#   flyctl scale count 3   # scale workers independently
+
+app = "archivehub-crawler"
+
+[build]
+  dockerfile = "crawler/Dockerfile"
+
+[env]
+  AH_APP__ENV = "production"
+  AH_CRAWLER_CONCURRENCY = "4"
+  AH_STORAGE__PROVIDER = "local"
+  AH_STORAGE__LOCAL_ROOT = "/data/archives"
+
+[[mounts]]
+  source = "archivehub_storage"
+  destination = "/data"
+
+[processes]
+  worker = "archivehub-crawler"

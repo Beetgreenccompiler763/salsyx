@@ -1,0 +1,74 @@
+# Local development environment for ArchiveHub.
+#
+# Runs the exact Postgres version used in production (Neon is Postgres 15/16+;
+# use the major version you deploy against — this file defaults to 16).
+#
+# Usage:
+#   docker compose up -d db
+#   cp backend/.env.example backend/.env   # fill in, or leave defaults
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: archivehub-db
+    environment:
+      POSTGRES_USER: archivehub
+      POSTGRES_PASSWORD: archivehub
+      POSTGRES_DB: archivehub
+    ports:
+      - "5432:5432"
+    volumes:
+      - archivehub-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U archivehub -d archivehub"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: archivehub-api
+    environment:
+      AH_APP__ENV: development
+      AH_DATABASE__URL: postgres://archivehub:archivehub@db:5432/archivehub
+      AH_SERVER__ALLOWED_ORIGIN: "*"
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend/data:/data/archives
+
+  crawler:
+    build:
+      context: .
+      dockerfile: crawler/Dockerfile
+    container_name: archivehub-crawler
+    environment:
+      AH_APP__ENV: development
+      AH_DATABASE__URL: postgres://archivehub:archivehub@db:5432/archivehub
+      AH_CRAWLER_CONCURRENCY: "2"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend/data:/data/archives
+
+  web:
+    build:
+      context: frontend
+      args:
+        API_ORIGIN: http://api:8080
+    container_name: archivehub-web
+    environment:
+      API_ORIGIN: http://api:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  archivehub-pgdata:

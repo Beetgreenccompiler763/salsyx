@@ -1,0 +1,37 @@
+[app]
+env = "development"
+allow_public_archive_requests = true
+refresh_ttl_secs = 3600
+
+[server]
+host = "127.0.0.1"
+port = 8080
+allowed_origin = "http://localhost:3000"
+openapi_path = "openapi.json"
+
+[database]
+# Local dev: `docker compose up -d db` provides a Postgres on 5432.
+url = "postgres://archivehub:archivehub@localhost:5432/archivehub"
+max_connections = 10
+acquire_timeout_secs = 5
+auto_migrate = true
+
+[github]
+base_url = "https://api.github.com"
+token = ""
+user_agent = "archivehub/0.1 (nothing-open-source-should-disappear)"
+timeout_secs = 15
+
+[storage]
+provider = "local"
+local_root = "./data/archives"
+r2_endpoint = ""
+r2_bucket = ""
+r2_account_id = ""
+r2_access_key_id = ""
+r2_secret_access_key = ""
+r2_public_base_url = ""
+
+[queue]
+capacity = 1024
+worker_concurrency = 4

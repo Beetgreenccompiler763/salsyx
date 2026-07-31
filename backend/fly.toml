@@ -1,0 +1,37 @@
+# Fly.io configuration for the ArchiveHub API.
+#
+#   flyctl launch --config backend/fly.toml
+#   flyctl secrets set AH_DATABASE__URL=... AH_GITHUB__TOKEN=...
+#   flyctl secrets set AH_STORAGE__PROVIDER=r2 AH_STORAGE__R2_...=...
+#
+# The Postgres database itself should be provisioned via `flyctl postgres
+# create` (or use Neon free tier — set AH_DATABASE__URL to the Neon URL).
+
+app = "archivehub-api"
+
+[build]
+  dockerfile = "backend/Dockerfile"
+
+[env]
+  AH_APP__ENV = "production"
+  AH_SERVER__HOST = "0.0.0.0"
+  AH_SERVER__PORT = "8080"
+  # Allow the frontend's origin. Swap for your Pages project domain.
+  AH_SERVER__ALLOWED_ORIGIN = "https://archivehub.pages.dev"
+  AH_STORAGE__PROVIDER = "local"
+  AH_STORAGE__LOCAL_ROOT = "/data/archives"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[mounts]]
+  source = "archivehub_storage"
+  destination = "/data"
+
+[metrics]
+  port = 9091
+  path = "/metrics"

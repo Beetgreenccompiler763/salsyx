@@ -1,0 +1,73 @@
+name: Deploy
+
+# Deploys:
+# - backend API  → Fly.io  (flyctl) when backend/ changes on main
+# - crawler      → Fly.io  (flyctl) when crawler/ changes on main
+# - frontend     → Cloudflare Pages via wrangler when frontend/ changes on main
+#
+# Set the following secrets for full automation:
+#   FLY_API_TOKEN          flyctl token (https://fly.io/user/personal-access-tokens)
+#   CLOUDFLARE_API_TOKEN   Pages deploy token
+#   CLOUDFLARE_ACCOUNT_ID  your CF account id
+#
+# If you prefer Railway/Render/Koyeb, swap the backend job for their
+# `railway up` / `render deploy` equivalents — the Dockerfiles are already
+# there.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "crawler/**"
+      - "shared/**"
+      - "frontend/**"
+      - ".github/workflows/deploy.yml"
+
+jobs:
+  deploy-backend:
+    name: Deploy backend + crawler → Fly.io
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy API
+        run: flyctl deploy --remote-only --config backend/fly.toml
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Deploy Crawler
+        run: flyctl deploy --remote-only --config crawler/fly.toml
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  deploy-frontend:
+    name: Deploy frontend → Cloudflare Pages
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install & build (next-on-pages)
+        working-directory: frontend
+        run: |
+          npm ci
+          npx @cloudflare/next-on-pages
+        env:
+          API_ORIGIN: ${{ secrets.API_ORIGIN }}
+
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy frontend/.vercel/output/static --project-name=archivehub

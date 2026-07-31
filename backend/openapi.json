@@ -1,0 +1,372 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ArchiveHub API",
+    "description": "Search and preservation platform for public GitHub repositories. Nothing open-source should disappear forever.",
+    "version": "0.1.0",
+    "license": { "name": "MIT" }
+  },
+  "servers": [
+    { "url": "/api/v1", "description": "Default base path" }
+  ],
+  "tags": [
+    { "name": "health", "description": "Liveness and readiness" },
+    { "name": "search", "description": "Repository search" },
+    { "name": "repository", "description": "Repository resolution" },
+    { "name": "archive", "description": "Archived snapshots" },
+    { "name": "stats", "description": "Platform statistics" }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Health check",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search": {
+      "get": {
+        "tags": ["search"],
+        "summary": "Search repositories",
+        "description": "Searches by repository name, owner, description, language, license, topics, and star range. Supports exact, partial, and fuzzy matching.",
+        "operationId": "search",
+        "parameters": [
+          { "name": "q", "in": "query", "description": "Search term", "schema": { "type": "string" } },
+          { "name": "mode", "in": "query", "description": "Match mode", "schema": { "type": "string", "enum": ["exact", "partial", "fuzzy", "full_text"] } },
+          { "name": "owner", "in": "query", "description": "Filter by owner login", "schema": { "type": "string" } },
+          { "name": "language", "in": "query", "description": "Filter by primary language", "schema": { "type": "string" } },
+          { "name": "license", "in": "query", "description": "Filter by SPDX license", "schema": { "type": "string" } },
+          { "name": "topics", "in": "query", "description": "Comma-separated topics (OR)", "schema": { "type": "string" } },
+          { "name": "min_stars", "in": "query", "description": "Minimum star count", "schema": { "type": "integer" } },
+          { "name": "include_deleted", "in": "query", "description": "Include deleted repos", "schema": { "type": "boolean" } },
+          { "name": "archived_only", "in": "query", "description": "Only repos with archives", "schema": { "type": "boolean" } },
+          { "name": "sort", "in": "query", "description": "Sort key", "schema": { "type": "string", "enum": ["relevance", "stars", "forks", "name", "updated_at", "archived_at", "commit_count"] } },
+          { "name": "order", "in": "query", "description": "Sort direction", "schema": { "type": "string", "enum": ["asc", "desc"] } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SearchResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/repo/{owner}/{repo}": {
+      "get": {
+        "tags": ["repository"],
+        "summary": "Resolve a repository",
+        "description": "Checks GitHub first; if deleted, falls back to the ArchiveHub archive database.",
+        "operationId": "resolveRepository",
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resolution result",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RepoResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found on GitHub and not archived",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorBody" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/archive/{id}": {
+      "get": {
+        "tags": ["archive"],
+        "summary": "Get archive metadata",
+        "operationId": "getArchive",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Archive metadata",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ArchiveResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/download/{id}": {
+      "get": {
+        "tags": ["archive"],
+        "summary": "Download archived blob",
+        "description": "Streams the archived snapshot with integrity verification.",
+        "operationId": "downloadArchive",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary archive stream"
+          }
+        }
+      }
+    },
+    "/stats": {
+      "get": {
+        "tags": ["stats"],
+        "summary": "Platform statistics",
+        "operationId": "stats",
+        "responses": {
+          "200": {
+            "description": "Aggregate metrics",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StatsResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stats/top": {
+      "get": {
+        "tags": ["stats"],
+        "summary": "Top languages and repositories",
+        "operationId": "statsTop",
+        "responses": {
+          "200": {
+            "description": "Top lists",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TopResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/archive": {
+      "post": {
+        "tags": ["archive"],
+        "summary": "Enqueue an archive job",
+        "operationId": "createArchive",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateArchiveRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Archive job queued",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CreateArchiveResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/refresh": {
+      "post": {
+        "tags": ["repository"],
+        "summary": "Force-refresh a repository",
+        "operationId": "refreshRepository",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RefreshRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Refresh result",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RefreshResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string" },
+          "version": { "type": "string" },
+          "database": { "type": "string", "enum": ["ok", "unreachable"] },
+          "uptime_secs": { "type": "integer" }
+        }
+      },
+      "SearchResponse": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer" },
+          "page": { "type": "integer" },
+          "per_page": { "type": "integer" },
+          "query": { "type": "string" },
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/SearchItem" } }
+        }
+      },
+      "SearchItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "owner": { "type": "string" },
+          "name": { "type": "string" },
+          "full_name": { "type": "string" },
+          "description": { "type": "string" },
+          "language": { "type": "string" },
+          "license": { "type": "string" },
+          "topics": { "type": "array", "items": { "type": "string" } },
+          "stars_count": { "type": "integer" },
+          "forks_count": { "type": "integer" },
+          "is_deleted": { "type": "boolean" },
+          "has_archive": { "type": "boolean" },
+          "archived_at": { "type": "string", "format": "date-time" },
+          "html_url": { "type": "string" }
+        }
+      },
+      "RepoResponse": {
+        "type": "object",
+        "properties": {
+          "source": { "type": "string", "enum": ["github", "archivehub"] },
+          "status": { "type": "string", "enum": ["live", "archived", "not_found"] },
+          "repository": { "type": "object" },
+          "archive": { "type": "object" },
+          "download_url": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      },
+      "ArchiveResponse": {
+        "type": "object",
+        "properties": {
+          "archive": { "$ref": "#/components/schemas/Archive" },
+          "download_url": { "type": "string" },
+          "storage_provider": { "type": "string" }
+        }
+      },
+      "Archive": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "repository_id": { "type": "string", "format": "uuid" },
+          "commit_ref": { "type": "string" },
+          "commit_count": { "type": "integer" },
+          "checksum": { "type": "string" },
+          "size_bytes": { "type": "integer" },
+          "storage": {
+            "type": "object",
+            "properties": {
+              "provider": { "type": "string" },
+              "key": { "type": "string" }
+            }
+          },
+          "compression": { "type": "string", "enum": ["zip", "git_bundle", "tar", "custom"] },
+          "status": { "type": "string", "enum": ["pending", "fetching", "processing", "archived", "verification_failed", "failed"] },
+          "deleted_at": { "type": "string", "format": "date-time" },
+          "archived_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "StatsResponse": {
+        "type": "object",
+        "properties": {
+          "total_repositories": { "type": "integer" },
+          "archived_repositories": { "type": "integer" },
+          "total_archives": { "type": "integer" },
+          "total_archived_bytes": { "type": "integer" },
+          "total_downloads": { "type": "integer" },
+          "deleted_archived": { "type": "integer" },
+          "total_owners": { "type": "integer" },
+          "indexed_bytes": { "type": "integer" }
+        }
+      },
+      "TopResponse": {
+        "type": "object",
+        "properties": {
+          "languages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "language": { "type": "string" },
+                "count": { "type": "integer" }
+              }
+            }
+          },
+          "top_repositories": { "type": "array", "items": { "type": "object" } }
+        }
+      },
+      "CreateArchiveRequest": {
+        "type": "object",
+        "required": ["full_name"],
+        "properties": {
+          "full_name": { "type": "string", "description": "owner/repo" }
+        }
+      },
+      "CreateArchiveResponse": {
+        "type": "object",
+        "properties": {
+          "archive_id": { "type": "string", "format": "uuid" },
+          "status": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      },
+      "RefreshRequest": {
+        "type": "object",
+        "required": ["full_name"],
+        "properties": {
+          "full_name": { "type": "string", "description": "owner/repo" }
+        }
+      },
+      "RefreshResponse": {
+        "type": "object",
+        "properties": {
+          "full_name": { "type": "string" },
+          "status": { "type": "string" },
+          "source": { "type": "string" },
+          "archive_id": { "type": "string", "format": "uuid" }
+        }
+      },
+      "ErrorBody": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "detail": { "type": "string" }
+        }
+      }
+    }
+  }
+}

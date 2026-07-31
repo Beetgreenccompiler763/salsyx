@@ -1,0 +1,55 @@
+[package]
+name = "archivehub-api"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "ArchiveHub API server — search, resolve, and serve archived repositories."
+
+[[bin]]
+name = "archivehub-api"
+path = "src/main.rs"
+
+[dependencies]
+archivehub-shared = { path = "../shared" }
+
+axum.workspace = true
+tokio.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+sqlx.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+reqwest.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+figment.workspace = true
+dotenvy.workspace = true
+uuid.workspace = true
+ulid.workspace = true
+chrono.workspace = true
+url.workspace = true
+sha2.workspace = true
+hex.workspace = true
+async-trait.workspace = true
+futures-util.workspace = true
+async-channel.workspace = true
+parking_lot.workspace = true
+once_cell.workspace = true
+hmac = "0.12"
+
+# Observability — Sentry error tracking (optional, gated by the `sentry` feature).
+# Uses reqwest + rustls transport (no OpenSSL system dependency).
+sentry = { version = "0.37", optional = true, default-features = false, features = ["backtrace", "contexts", "debug-images", "panic", "release-health", "reqwest", "rustls", "tracing"] }
+sentry-tracing = { version = "0.37", optional = true }
+
+[features]
+default = []
+# Enable Sentry error tracking. Requires AH_SENTRY_DSN to be set at runtime.
+sentry = ["dep:sentry", "dep:sentry-tracing"]
+
+[dev-dependencies]
+tower.workspace = true
+http-body-util = "0.1"
