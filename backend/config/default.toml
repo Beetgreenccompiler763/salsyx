@@ -29,7 +29,11 @@ webhook_secret = ""
 
 [storage]
 # "local" (dev) | "r2" (Cloudflare R2) | "s3" (Storj/MinIO/Garage/B2...)
+# To enable failover, set `providers` to an ordered list and leave
+# `provider` ignored, e.g. providers = ["s3", "r2"] (writes go to the first
+# healthy one; reads fall through to whichever holds the object).
 provider = "local"
+providers = []
 local_root = "./data/archives"
 r2_endpoint = ""
 r2_bucket = ""

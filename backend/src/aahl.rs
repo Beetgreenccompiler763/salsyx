@@ -96,6 +96,7 @@ mod tests {
 
         let config = StorageConfig {
             provider: "local".to_string(),
+            providers: Vec::new(),
             local_root: store_root.to_string_lossy().into_owned(),
             r2_endpoint: None,
             r2_bucket: None,

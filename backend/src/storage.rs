@@ -77,6 +77,23 @@ pub trait Storage: Send + Sync {
 
 /// Construct the storage backend from configuration.
 pub fn from_config(config: &StorageConfig) -> Result<Box<dyn Storage>, StorageError> {
+    // Failover chain: write to the first healthy provider, read from
+    // whichever one actually holds the object. No cross-provider
+    // duplication — each blob lives on exactly one backend.
+    if !config.providers.is_empty() {
+        let mut backends: Vec<Box<dyn Storage>> = Vec::with_capacity(config.providers.len());
+        for name in &config.providers {
+            let mut sub = config.clone();
+            sub.provider.clone_from(name);
+            sub.providers = Vec::new();
+            backends.push(build_single(&sub)?);
+        }
+        return Ok(Box::new(FailoverStorage::new(backends)));
+    }
+    build_single(config)
+}
+
+fn build_single(config: &StorageConfig) -> Result<Box<dyn Storage>, StorageError> {
     match config.provider.as_str() {
         "local" => Ok(Box::new(LocalStorage {
             root: PathBuf::from(&config.local_root),
@@ -84,6 +101,113 @@ pub fn from_config(config: &StorageConfig) -> Result<Box<dyn Storage>, StorageEr
         "r2" => Ok(Box::new(s3::S3Storage::from_r2_config(config)?)),
         "s3" => Ok(Box::new(s3::S3Storage::from_s3_config(config)?)),
         other => Err(StorageError::UnsupportedProvider(other.to_string())),
+    }
+}
+
+/// Wraps several storage backends in a failover chain.
+///
+/// - Writes go to the first backend that succeeds (in order), so each blob
+///   is stored on exactly one provider — no duplication.
+/// - Reads (`get`/`exists`/`delete`/`public_url`) try every backend in
+///   order and use the first that answers, so a slow/down primary doesn't
+///   block access to blobs held by the others.
+///
+/// The identity of the backend that stored a blob is reported through
+/// [`Storage::provider_name`] immediately after `put`, which the crawler
+/// records in the database (`storage_location`).
+pub struct FailoverStorage {
+    backends: Vec<Box<dyn Storage>>,
+    /// Index of the backend that stored the most recent write. Used by
+    /// [`Storage::provider_name`] to report where a blob actually landed.
+    last_used: std::sync::atomic::AtomicUsize,
+}
+
+impl FailoverStorage {
+    pub fn new(backends: Vec<Box<dyn Storage>>) -> Self {
+        assert!(!backends.is_empty(), "failover storage needs >=1 backend");
+        Self {
+            backends,
+            last_used: std::sync::atomic::AtomicUsize::new(0),
+        }
+    }
+}
+
+#[async_trait]
+impl Storage for FailoverStorage {
+    async fn put(&self, key: &str, bytes: &[u8]) -> Result<String, StorageError> {
+        let mut last_err = None;
+        for (idx, backend) in self.backends.iter().enumerate() {
+            match backend.put(key, bytes).await {
+                Ok(checksum) => {
+                    self.last_used.store(idx, std::sync::atomic::Ordering::Relaxed);
+                    tracing::debug!(provider = backend.provider_name(), key, "stored via failover");
+                    return Ok(checksum);
+                }
+                Err(e) => {
+                    tracing::warn!(provider = backend.provider_name(), key, error = %e, "storage put failed, trying next");
+                    last_err = Some(e);
+                }
+            }
+        }
+        Err(last_err.unwrap_or_else(|| StorageError::NotConfigured("no backends".into())))
+    }
+
+    async fn get(
+        &self,
+        key: &str,
+        expected_checksum: Option<&str>,
+    ) -> Result<StoredBlob, StorageError> {
+        let mut last_err = None;
+        for backend in &self.backends {
+            match backend.get(key, expected_checksum).await {
+                Ok(blob) => {
+                    tracing::debug!(provider = backend.provider_name(), key, "served via failover");
+                    return Ok(blob);
+                }
+                Err(e) => {
+                    tracing::debug!(provider = backend.provider_name(), key, error = %e, "storage get missed, trying next");
+                    last_err = Some(e);
+                }
+            }
+        }
+        Err(last_err.unwrap_or_else(|| StorageError::NotFound(key.to_string())))
+    }
+
+    async fn exists(&self, key: &str) -> Result<bool, StorageError> {
+        for backend in &self.backends {
+            if backend.exists(key).await.unwrap_or(false) {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
+    async fn delete(&self, key: &str) -> Result<(), StorageError> {
+        for backend in &self.backends {
+            if backend.delete(key).await.is_ok() {
+                return Ok(());
+            }
+        }
+        Ok(())
+    }
+
+    fn provider_name(&self) -> &'static str {
+        // Used right after `put` to record where a blob landed — report the
+        // backend that actually stored it (first healthy one wins).
+        let idx = self.last_used.load(std::sync::atomic::Ordering::Relaxed);
+        self.backends
+            .get(idx)
+            .map(|b| b.provider_name())
+            .unwrap_or("failover")
+    }
+
+    async fn public_url(&self, key: &str) -> Option<String> {
+        for backend in &self.backends {
+            if let Some(url) = backend.public_url(key).await {
+                return Some(url);
+            }
+        }
+        None
     }
 }
 
@@ -503,5 +627,72 @@ mod tests {
         storage.delete("repo/test.bundle").await.unwrap();
         let err = storage.get("repo/test.bundle", None).await.unwrap_err();
         assert!(matches!(err, StorageError::NotFound(_)));
+    }
+
+    /// A backend that always fails, to exercise the failover chain.
+    struct BrokenStorage;
+
+    #[async_trait]
+    impl Storage for BrokenStorage {
+        async fn put(&self, _k: &str, _b: &[u8]) -> Result<String, StorageError> {
+            Err(StorageError::Transport("broken".into()))
+        }
+        async fn get(
+            &self,
+            _k: &str,
+            _c: Option<&str>,
+        ) -> Result<StoredBlob, StorageError> {
+            Err(StorageError::NotFound("nope".into()))
+        }
+        async fn exists(&self, _k: &str) -> Result<bool, StorageError> {
+            Ok(false)
+        }
+        async fn delete(&self, _k: &str) -> Result<(), StorageError> {
+            Ok(())
+        }
+        fn provider_name(&self) -> &'static str {
+            "broken"
+        }
+        async fn public_url(&self, _k: &str) -> Option<String> {
+            None
+        }
+    }
+
+    #[tokio::test]
+    async fn failover_writes_to_first_healthy_backend() {
+        let primary = LocalStorage {
+            root: std::env::temp_dir().join(format!("salsyx-failover-{}", uuid::Uuid::new_v4())),
+        };
+        let backup = LocalStorage {
+            root: std::env::temp_dir().join(format!("salsyx-failover-{}", uuid::Uuid::new_v4())),
+        };
+        let storage = FailoverStorage::new(vec![
+            Box::new(BrokenStorage),
+            Box::new(primary),
+            Box::new(backup),
+        ]);
+
+        let checksum = storage.put("repo/test.bundle", b"payload").await.unwrap();
+        // `provider_name` must report the backend that actually stored it.
+        assert_eq!(storage.provider_name(), "local");
+
+        let blob = storage
+            .get("repo/test.bundle", Some(&checksum))
+            .await
+            .unwrap();
+        assert_eq!(blob.bytes, b"payload");
+    }
+
+    #[tokio::test]
+    async fn failover_reads_fall_through_to_whoever_holds_the_object() {
+        let holder = LocalStorage {
+            root: std::env::temp_dir().join(format!("salsyx-failover-{}", uuid::Uuid::new_v4())),
+        };
+        let storage = FailoverStorage::new(vec![Box::new(BrokenStorage), Box::new(holder)]);
+
+        let checksum = storage.put("repo/test.bundle", b"data").await.unwrap();
+        let blob = storage.get("repo/test.bundle", Some(&checksum)).await.unwrap();
+        assert_eq!(blob.bytes, b"data");
+        assert!(storage.exists("repo/test.bundle").await.unwrap());
     }
 }

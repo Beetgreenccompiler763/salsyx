@@ -85,6 +85,12 @@ pub struct StorageConfig {
     /// Storage provider: `local` (filesystem, for dev), `r2`, or `s3`
     /// (any S3-compatible service: Storj, MinIO, Garage, Backblaze B2...).
     pub provider: String,
+    /// Ordered list of storage providers to try in turn. When non-empty the
+    /// first healthy provider wins for writes (no duplication); reads fall
+    /// through to whichever provider holds the object. `provider` is ignored
+    /// when this is set.
+    #[serde(default)]
+    pub providers: Vec<String>,
     /// Root directory when using the local provider.
     pub local_root: String,
     // Cloudflare R2 (S3-compatible) settings.
