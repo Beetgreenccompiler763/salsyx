@@ -51,13 +51,7 @@ pub fn build(_config: &Config, state: AppState) -> Router {
         .route("/admin/overview", get(admin::overview))
         .route("/archive", post(archive::create_archive))
         .route("/refresh", post(repo::refresh))
-        .with_state(state.clone())
-        .layer(
-            axum::middleware::from_fn_with_state(
-                state.clone(),
-                crate::middleware::cache::cache_middleware,
-            ),
-        );
+        .with_state(state.clone());
 
     // GitHub webhook lives outside `/api/v1` so repo admins can point the
     // GitHub integration straight at the base URL.
