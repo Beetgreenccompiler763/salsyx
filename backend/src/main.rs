@@ -39,13 +39,20 @@ async fn main() -> anyhow::Result<()> {
     let cors = if config.server.allowed_origin == "*" {
         CorsLayer::permissive()
     } else {
-        CorsLayer::new().allow_origin(
-            config
-                .server
-                .allowed_origin
-                .parse::<axum::http::HeaderValue>()
-                .expect("invalid allowed_origin in config"),
-        )
+        CorsLayer::new()
+            .allow_origin(
+                config
+                    .server
+                    .allowed_origin
+                    .parse::<axum::http::HeaderValue>()
+                    .expect("invalid allowed_origin in config"),
+            )
+            .allow_methods([
+                axum::http::Method::GET,
+                axum::http::Method::POST,
+                axum::http::Method::HEAD,
+            ])
+            .allow_headers([axum::http::header::CONTENT_TYPE, axum::http::header::AUTHORIZATION])
     };
 
     let app = salsyx_api::routes::build(&config, state).layer(
