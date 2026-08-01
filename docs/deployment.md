@@ -96,8 +96,9 @@ by `AH_`-prefixed env vars (`AH_SERVER__PORT=9000`, `AH_DATABASE__URL=…`).
 | `AH_DATABASE__URL` | Postgres URL | local compose db |
 | `AH_GITHUB__TOKEN` | PAT (5000 req/h) or blank (60 req/h) | blank |
 | `AH_GITHUB__WEBHOOK_SECRET` | HMAC secret for `POST /webhook/github` | blank (verification off) |
-| `AH_STORAGE__PROVIDER` | `local` \| `r2` | `local` |
+| `AH_STORAGE__PROVIDER` | `local` \| `r2` \| `s3` | `local` |
 | `AH_STORAGE__R2_*` | R2 endpoint/bucket/keys | — |
+| `AH_STORAGE__S3_*` | generic S3 endpoint/bucket/region/keys (Storj, MinIO, Garage, B2…) | — |
 | `AH_APP__CRAWLER_FORMAT` | `git_bundle` \| `aahl` (AAHL snapshots) | `git_bundle` |
 | `AH_SERVER__ADMIN_TOKEN` | Bearer token for `/api/v1/admin/overview`; blank disables the admin routes | blank |
 | `AH_PROVIDERS__DISABLED` | JSON array of external provider slugs to skip (`["archive_org"]`) | `[]` |
@@ -154,6 +155,22 @@ API boot; disable auto-migrate for the crawler to avoid races
 3. Set the `AH_STORAGE__R2_*` secrets on API + crawler.
 4. Optionally set `AH_STORAGE__R2_PUBLIC_BASE_URL` to a public bucket URL so
    downloads can bypass the API.
+
+### Storage → any S3-compatible service (Storj, MinIO, Garage, B2…)
+
+1. Create a bucket and an S3 access grant / API key.
+2. Set `AH_STORAGE__PROVIDER=s3` plus the `AH_STORAGE__S3_*` secrets
+   (`S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`,
+   `S3_SECRET_ACCESS_KEY`, optional `S3_PUBLIC_BASE_URL`) on API + crawler.
+
+```bash
+flyctl secrets set AH_STORAGE__PROVIDER=s3 \
+  AH_STORAGE__S3_ENDPOINT=https://gateway.storjshare.io \
+  AH_STORAGE__S3_BUCKET=salsyx \
+  AH_STORAGE__S3_REGION=auto \
+  AH_STORAGE__S3_ACCESS_KEY_ID=… \
+  AH_STORAGE__S3_SECRET_ACCESS_KEY=…
+```
 
 ---
 

@@ -28,6 +28,7 @@ timeout_secs = 15
 webhook_secret = ""
 
 [storage]
+# "local" (dev) | "r2" (Cloudflare R2) | "s3" (Storj/MinIO/Garage/B2...)
 provider = "local"
 local_root = "./data/archives"
 r2_endpoint = ""
@@ -36,6 +37,12 @@ r2_account_id = ""
 r2_access_key_id = ""
 r2_secret_access_key = ""
 r2_public_base_url = ""
+s3_endpoint = ""
+s3_bucket = ""
+s3_region = "auto"
+s3_access_key_id = ""
+s3_secret_access_key = ""
+s3_public_base_url = ""
 
 [queue]
 capacity = 1024

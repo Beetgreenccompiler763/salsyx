@@ -103,6 +103,12 @@ mod tests {
             r2_access_key_id: None,
             r2_secret_access_key: None,
             r2_public_base_url: None,
+            s3_endpoint: None,
+            s3_bucket: None,
+            s3_region: "auto".to_string(),
+            s3_access_key_id: None,
+            s3_secret_access_key: None,
+            s3_public_base_url: None,
         };
         let storage = from_config(&config).unwrap();
 

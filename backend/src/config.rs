@@ -82,7 +82,8 @@ pub struct GithubConfig {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct StorageConfig {
-    /// Storage provider: `local` (filesystem, for dev) or `r2`.
+    /// Storage provider: `local` (filesystem, for dev), `r2`, or `s3`
+    /// (any S3-compatible service: Storj, MinIO, Garage, Backblaze B2...).
     pub provider: String,
     /// Root directory when using the local provider.
     pub local_root: String,
@@ -94,6 +95,20 @@ pub struct StorageConfig {
     pub r2_secret_access_key: Option<String>,
     /// Optional public URL prefix used to build download links.
     pub r2_public_base_url: Option<String>,
+    // Generic S3-compatible provider settings (Storj, MinIO, Garage, ...).
+    pub s3_endpoint: Option<String>,
+    pub s3_bucket: Option<String>,
+    /// S3 region for signature scope. `auto` works for R2 and Storj.
+    #[serde(default = "default_s3_region")]
+    pub s3_region: String,
+    pub s3_access_key_id: Option<String>,
+    pub s3_secret_access_key: Option<String>,
+    /// Optional public URL prefix used to build download links.
+    pub s3_public_base_url: Option<String>,
+}
+
+fn default_s3_region() -> String {
+    "auto".to_string()
 }
 
 #[derive(Debug, Clone, Deserialize)]

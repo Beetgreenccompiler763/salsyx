@@ -81,7 +81,8 @@ pub fn from_config(config: &StorageConfig) -> Result<Box<dyn Storage>, StorageEr
         "local" => Ok(Box::new(LocalStorage {
             root: PathBuf::from(&config.local_root),
         })),
-        "r2" => Ok(Box::new(r2::R2Storage::from_config(config)?)),
+        "r2" => Ok(Box::new(s3::S3Storage::from_r2_config(config)?)),
+        "s3" => Ok(Box::new(s3::S3Storage::from_s3_config(config)?)),
         other => Err(StorageError::UnsupportedProvider(other.to_string())),
     }
 }
@@ -172,28 +173,30 @@ impl Storage for LocalStorage {
 }
 
 // ---------------------------------------------------------------------------
-// Cloudflare R2 provider (S3-compatible)
+// Generic S3-compatible provider (R2, Storj, MinIO, Garage, Backblaze B2...)
 // ---------------------------------------------------------------------------
 
-mod r2 {
+mod s3 {
     use super::*;
     use crate::config::StorageConfig;
 
-    /// R2-backed storage using the S3-compatible API.
+    /// S3-compatible object storage using the AWS Signature V4 API.
     ///
-    /// Signed URLs are produced on demand so objects can be served without
-    /// making the bucket public.
-    pub struct R2Storage {
+    /// Used directly for the `s3` provider (Storj, MinIO, Garage, ...) and as
+    /// the implementation behind the `r2` provider (Cloudflare R2).
+    pub struct S3Storage {
         client: reqwest::Client,
         endpoint: String,
         bucket: String,
+        region: String,
         access_key_id: String,
         secret_access_key: String,
         public_base_url: Option<String>,
+        provider_tag: &'static str,
     }
 
-    impl R2Storage {
-        pub fn from_config(config: &StorageConfig) -> Result<Self, StorageError> {
+    impl S3Storage {
+        pub fn from_r2_config(config: &StorageConfig) -> Result<Self, StorageError> {
             let account_id = config
                 .r2_account_id
                 .clone()
@@ -220,9 +223,41 @@ mod r2 {
                 client: reqwest::Client::new(),
                 endpoint,
                 bucket,
+                region: "auto".to_string(),
                 access_key_id,
                 secret_access_key,
                 public_base_url: config.r2_public_base_url.clone(),
+                provider_tag: "r2",
+            })
+        }
+
+        pub fn from_s3_config(config: &StorageConfig) -> Result<Self, StorageError> {
+            let endpoint = config
+                .s3_endpoint
+                .clone()
+                .ok_or_else(|| StorageError::NotConfigured("s3_endpoint".into()))?;
+            let bucket = config
+                .s3_bucket
+                .clone()
+                .ok_or_else(|| StorageError::NotConfigured("s3_bucket".into()))?;
+            let access_key_id = config
+                .s3_access_key_id
+                .clone()
+                .ok_or_else(|| StorageError::NotConfigured("s3_access_key_id".into()))?;
+            let secret_access_key = config
+                .s3_secret_access_key
+                .clone()
+                .ok_or_else(|| StorageError::NotConfigured("s3_secret_access_key".into()))?;
+
+            Ok(Self {
+                client: reqwest::Client::new(),
+                endpoint,
+                bucket,
+                region: config.s3_region.clone(),
+                access_key_id,
+                secret_access_key,
+                public_base_url: config.s3_public_base_url.clone(),
+                provider_tag: "s3",
             })
         }
 
@@ -248,7 +283,7 @@ mod r2 {
         ) -> String {
             let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
             let date_stamp = now.format("%Y%m%d").to_string();
-            let region = "auto";
+            let region = &self.region;
             let service = "s3";
 
             // Path-style addressing: the canonical URI includes the bucket.
@@ -295,7 +330,7 @@ mod r2 {
     }
 
     #[async_trait]
-    impl Storage for R2Storage {
+    impl Storage for S3Storage {
         #[instrument(skip(self, bytes), fields(key = %key, size = bytes.len()))]
         async fn put(&self, key: &str, bytes: &[u8]) -> Result<String, StorageError> {
             let now = chrono::Utc::now();
@@ -413,7 +448,7 @@ mod r2 {
 
             if !resp.status().is_success() {
                 return Err(StorageError::Transport(format!(
-                    "r2 delete failed: {}",
+                    "s3 delete failed: {}",
                     resp.status()
                 )));
             }
@@ -421,7 +456,7 @@ mod r2 {
         }
 
         fn provider_name(&self) -> &'static str {
-            "r2"
+            self.provider_tag
         }
 
         async fn public_url(&self, key: &str) -> Option<String> {
@@ -435,7 +470,7 @@ mod r2 {
 }
 
 // Re-export for tests/consumers.
-pub use self::r2::R2Storage;
+pub use self::s3::S3Storage;
 
 #[cfg(test)]
 mod tests {
