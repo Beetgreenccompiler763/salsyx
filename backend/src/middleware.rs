@@ -177,19 +177,18 @@ fn response_builder(
 }
 
 /// Only GET requests to stable, read-only paths get cached.
+///
+/// NOTE: this middleware is applied to the router nested at `/api/v1`, so
+/// Axum strips the prefix and the paths here are relative to that mount
+/// (i.e. `/stats`, not `/api/v1/stats`).
 fn should_cache(req: &Request<Body>) -> bool {
     if req.method() != axum::http::Method::GET {
         return false;
     }
     let path = req.uri().path();
-    [
-        "/api/v1/search",
-        "/api/v1/stats",
-        "/api/v1/stats/top",
-        "/api/v1/health",
-    ]
-    .iter()
-    .any(|p| path.starts_with(p))
+    ["/search", "/stats", "/stats/top", "/health"]
+        .iter()
+        .any(|p| path.starts_with(p))
 }
 
 /// Cache key: method + path + query.
@@ -200,4 +199,43 @@ fn cache_key(req: &Request<Body>) -> String {
         req.uri().path(),
         req.uri().query().unwrap_or("")
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn get(path: &str) -> Request<Body> {
+        Request::builder()
+            .method("GET")
+            .uri(path)
+            .body(Body::empty())
+            .unwrap()
+    }
+
+    #[test]
+    fn cacheable_read_paths_match_without_api_prefix() {
+        for path in [
+            "/search?q=hello",
+            "/search",
+            "/stats",
+            "/stats/top",
+            "/health",
+        ] {
+            assert!(should_cache(&get(path)), "expected cacheable: {path}");
+        }
+    }
+
+    #[test]
+    fn non_cacheable_paths_and_methods_are_skipped() {
+        assert!(!should_cache(&get("/repo/torvalds/linux")));
+        assert!(!should_cache(&get("/archive/123/download")));
+        assert!(!should_cache(&get("/admin/overview")));
+        let post = Request::builder()
+            .method("POST")
+            .uri("/search")
+            .body(Body::empty())
+            .unwrap();
+        assert!(!should_cache(&post));
+    }
 }
