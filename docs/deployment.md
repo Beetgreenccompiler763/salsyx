@@ -97,6 +97,7 @@ by `AH_`-prefixed env vars (`AH_SERVER__PORT=9000`, `AH_DATABASE__URL=…`).
 | `AH_GITHUB__TOKEN` | PAT (5000 req/h) or blank (60 req/h) | blank |
 | `AH_GITHUB__WEBHOOK_SECRET` | HMAC secret for `POST /webhook/github` | blank (verification off) |
 | `AH_STORAGE__PROVIDER` | `local` \| `r2` \| `s3` | `local` |
+| `AH_STORAGE__PROVIDERS` | JSON array for failover, e.g. `["s3","r2"]` (ignored when empty) | `[]` |
 | `AH_STORAGE__R2_*` | R2 endpoint/bucket/keys | — |
 | `AH_STORAGE__S3_*` | generic S3 endpoint/bucket/region/keys (Storj, MinIO, Garage, B2…) | — |
 | `AH_APP__CRAWLER_FORMAT` | `git_bundle` \| `aahl` (AAHL snapshots) | `git_bundle` |
@@ -171,6 +172,21 @@ flyctl secrets set AH_STORAGE__PROVIDER=s3 \
   AH_STORAGE__S3_ACCESS_KEY_ID=… \
   AH_STORAGE__S3_SECRET_ACCESS_KEY=…
 ```
+
+### Storage failover across providers (no duplication)
+
+Configure `AH_STORAGE__PROVIDERS` as an ordered JSON array instead of a single
+`AH_STORAGE__PROVIDER`. Writes go to the **first healthy** provider in the
+list; if it is down or slow the next one is used. Each blob is stored on
+**exactly one** provider (no duplication), and reads fall through to whichever
+provider actually holds the object, so old blobs keep working after a switch.
+
+```bash
+flyctl secrets set 'AH_STORAGE__PROVIDERS=["s3","r2"]'   # prefer Storj, fall back to R2
+```
+
+The provider that stored each archive is recorded in the database
+(`storage_location`), so the admin overview and download links stay correct.
 
 ---
 
