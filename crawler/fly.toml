@@ -19,6 +19,13 @@ app = "salsyx-crawler"
   AH_STORAGE__PROVIDER = "r2"
   AH_STORAGE__R2_BUCKET = "salsyx"
 
+# Large repos need headroom for `git clone`; 512MB avoids OOM kills on
+# e.g. linux (~270k files). Storage provider failover is configured via
+# AH_STORAGE__PROVIDERS Fly secret (["s3","r2"]).
+[vm]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+
 [[mounts]]
   source = "salsyx_storage"
   destination = "/data"

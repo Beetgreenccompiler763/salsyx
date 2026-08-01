@@ -52,7 +52,10 @@ async fn main() -> anyhow::Result<()> {
                 axum::http::Method::POST,
                 axum::http::Method::HEAD,
             ])
-            .allow_headers([axum::http::header::CONTENT_TYPE, axum::http::header::AUTHORIZATION])
+            .allow_headers([
+                axum::http::header::CONTENT_TYPE,
+                axum::http::header::AUTHORIZATION,
+            ])
     };
 
     let app = salsyx_api::routes::build(&config, state).layer(
@@ -63,10 +66,12 @@ async fn main() -> anyhow::Result<()> {
             ))
             .layer(PropagateRequestIdLayer::x_request_id())
             .layer(TraceLayer::new_for_http())
-            .layer(CompressionLayer::new()
-                .gzip(true)
-                .br(true)
-                .quality(CompressionLevel::Fastest))
+            .layer(
+                CompressionLayer::new()
+                    .gzip(true)
+                    .br(true)
+                    .quality(CompressionLevel::Fastest),
+            )
             .layer(CatchPanicLayer::new())
             .layer(TimeoutLayer::with_status_code(
                 axum::http::StatusCode::GATEWAY_TIMEOUT,

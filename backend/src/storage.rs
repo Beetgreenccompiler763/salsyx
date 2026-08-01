@@ -139,8 +139,13 @@ impl Storage for FailoverStorage {
         for (idx, backend) in self.backends.iter().enumerate() {
             match backend.put(key, bytes).await {
                 Ok(checksum) => {
-                    self.last_used.store(idx, std::sync::atomic::Ordering::Relaxed);
-                    tracing::debug!(provider = backend.provider_name(), key, "stored via failover");
+                    self.last_used
+                        .store(idx, std::sync::atomic::Ordering::Relaxed);
+                    tracing::debug!(
+                        provider = backend.provider_name(),
+                        key,
+                        "stored via failover"
+                    );
                     return Ok(checksum);
                 }
                 Err(e) => {
@@ -161,7 +166,11 @@ impl Storage for FailoverStorage {
         for backend in &self.backends {
             match backend.get(key, expected_checksum).await {
                 Ok(blob) => {
-                    tracing::debug!(provider = backend.provider_name(), key, "served via failover");
+                    tracing::debug!(
+                        provider = backend.provider_name(),
+                        key,
+                        "served via failover"
+                    );
                     return Ok(blob);
                 }
                 Err(e) => {
@@ -637,11 +646,7 @@ mod tests {
         async fn put(&self, _k: &str, _b: &[u8]) -> Result<String, StorageError> {
             Err(StorageError::Transport("broken".into()))
         }
-        async fn get(
-            &self,
-            _k: &str,
-            _c: Option<&str>,
-        ) -> Result<StoredBlob, StorageError> {
+        async fn get(&self, _k: &str, _c: Option<&str>) -> Result<StoredBlob, StorageError> {
             Err(StorageError::NotFound("nope".into()))
         }
         async fn exists(&self, _k: &str) -> Result<bool, StorageError> {
@@ -691,7 +696,10 @@ mod tests {
         let storage = FailoverStorage::new(vec![Box::new(BrokenStorage), Box::new(holder)]);
 
         let checksum = storage.put("repo/test.bundle", b"data").await.unwrap();
-        let blob = storage.get("repo/test.bundle", Some(&checksum)).await.unwrap();
+        let blob = storage
+            .get("repo/test.bundle", Some(&checksum))
+            .await
+            .unwrap();
         assert_eq!(blob.bytes, b"data");
         assert!(storage.exists("repo/test.bundle").await.unwrap());
     }

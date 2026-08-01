@@ -6,6 +6,7 @@ use sqlx::PgPool;
 
 use crate::config::Config;
 use crate::github::GithubClient;
+use crate::middleware::ResponseCache;
 use crate::providers::ArchiveProvider;
 use crate::queue::EventQueue;
 use crate::storage::Storage;
@@ -20,6 +21,8 @@ pub struct AppState {
     pub queue: EventQueue,
     /// External archive providers consulted when GitHub 404s.
     pub providers: Arc<Vec<Box<dyn ArchiveProvider>>>,
+    /// In-memory cache for stable read endpoints.
+    pub cache: ResponseCache,
 }
 
 impl AppState {
@@ -43,6 +46,7 @@ impl AppState {
             storage: Arc::from(storage),
             queue: EventQueue::new(1_024),
             providers: Arc::new(providers),
+            cache: ResponseCache::new(),
         })
     }
 }

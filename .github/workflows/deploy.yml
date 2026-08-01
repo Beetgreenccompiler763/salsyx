@@ -64,7 +64,9 @@ jobs:
           npm ci
           npx @cloudflare/next-on-pages
         env:
-          API_ORIGIN: ${{ secrets.API_ORIGIN }}
+          # Baked into the static bundle so the browser calls the API at its
+          # absolute origin (Cloudflare Pages has no /api proxy).
+          NEXT_PUBLIC_API_ORIGIN: ${{ secrets.API_ORIGIN }}
 
       - name: Publish to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
