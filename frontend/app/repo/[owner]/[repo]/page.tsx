@@ -22,7 +22,7 @@ import {
   GitCommitHorizontal,
   HardDrive,
 } from "lucide-react";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, resolveApiUrl } from "@/lib/api";
 import {
   formatBytes,
   formatDate,
@@ -244,7 +244,7 @@ function LiveView({
               </a>
               {result.download_url && (
                 <a
-                  href={result.download_url}
+                  href={resolveApiUrl(result.download_url)}
                   className="flex items-center gap-2 text-xs text-ink-faint transition-colors hover:text-neon"
                 >
                   <Download className="size-3.5" /> download zip
@@ -313,10 +313,10 @@ function ArchivedView({ result }: { result: RepoResponse }) {
               )}
             </div>
             <div className="flex flex-col items-end gap-2">
-              <a
-                href={result.download_url ?? api.downloadUrl(a.id)}
-                className="flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:shadow-glow-cyan"
-              >
+                <a
+                  href={resolveApiUrl(result.download_url ?? api.downloadUrl(a.id))}
+                  className="flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:shadow-glow-cyan"
+                >
                 <Download className="size-4" /> Download archive
               </a>
               {a.commit_ref && (

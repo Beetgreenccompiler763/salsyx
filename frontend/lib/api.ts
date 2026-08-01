@@ -16,6 +16,13 @@ function apiUrl(path: string): string {
   return `${API_ORIGIN}${path}`;
 }
 
+// Resolve a possibly-relative backend URL (e.g. `/api/v1/download/{id}`)
+// against the API origin so links work from the static frontend deploy.
+export function resolveApiUrl(url: string): string {
+  if (/^https?:\/\//.test(url)) return url;
+  return apiUrl(url);
+}
+
 import type {
   AdminJobCount,
   AdminOverview,
