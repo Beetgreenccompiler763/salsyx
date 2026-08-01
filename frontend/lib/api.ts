@@ -4,6 +4,18 @@
 // backend, so the frontend always calls relative URLs and stays deployable
 // on Cloudflare Pages / Vercel behind a reverse proxy.
 
+// API base URL.
+//
+// On the Node/standalone deploy (Docker, Fly) the Next.js proxy rewrites
+// `/api/*` to the backend, so relative paths would work. But on the static
+// Cloudflare Pages export there is no proxy, so we call the backend at its
+// absolute origin. Build with `NEXT_PUBLIC_API_ORIGIN` to override.
+const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN ?? "http://localhost:8080";
+
+function apiUrl(path: string): string {
+  return `${API_ORIGIN}${path}`;
+}
+
 import type {
   AdminJobCount,
   AdminOverview,
@@ -70,7 +82,7 @@ export interface SearchParams {
 
 export const api = {
   health(): Promise<HealthResponse> {
-    return request<HealthResponse>("/api/v1/health");
+    return request<HealthResponse>(apiUrl("/api/v1/health"));
   },
 
   search(params: SearchParams = {}): Promise<SearchResponse> {
@@ -89,60 +101,60 @@ export const api = {
     query.set("page", String(params.page ?? 1));
     query.set("per_page", String(params.per_page ?? 20));
 
-    return request<SearchResponse>(`/api/v1/search?${query.toString()}`);
+    return request<SearchResponse>(apiUrl(`/api/v1/search?${query.toString()}`));
   },
 
   repo(owner: string, repo: string): Promise<RepoResponse> {
-    return request<RepoResponse>(`/api/v1/repo/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`);
+    return request<RepoResponse>(apiUrl(`/api/v1/repo/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`));
   },
 
   readme(owner: string, repo: string): Promise<ReadmeResponse> {
     return request<ReadmeResponse>(
-      `/api/v1/repo/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/readme`,
+      apiUrl(`/api/v1/repo/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/readme`),
     );
   },
 
   owner(login: string): Promise<OwnerResponse> {
-    return request<OwnerResponse>(`/api/v1/owner/${encodeURIComponent(login)}`);
+    return request<OwnerResponse>(apiUrl(`/api/v1/owner/${encodeURIComponent(login)}`));
   },
 
   history(owner: string, repo: string): Promise<HistoryResponse> {
     return request<HistoryResponse>(
-      `/api/v1/repo/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/archives`,
+      apiUrl(`/api/v1/repo/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/archives`),
     );
   },
 
   archiveTree(id: string): Promise<TreeResponse> {
-    return request<TreeResponse>(`/api/v1/archive/${id}/tree`);
+    return request<TreeResponse>(apiUrl(`/api/v1/archive/${id}/tree`));
   },
 
   blobUrl(id: string, path: string): string {
-    return `/api/v1/archive/${id}/blob?path=${encodeURIComponent(path)}`;
+    return apiUrl(`/api/v1/archive/${id}/blob?path=${encodeURIComponent(path)}`);
   },
 
   archive(id: string): Promise<Archive> {
-    return request<{ archive: Archive; download_url: string }>(`/api/v1/archive/${id}`).then(
+    return request<{ archive: Archive; download_url: string }>(apiUrl(`/api/v1/archive/${id}`)).then(
       (r) => r.archive,
     );
   },
 
   stats(): Promise<StatsResponse> {
-    return request<StatsResponse>("/api/v1/stats");
+    return request<StatsResponse>(apiUrl("/api/v1/stats"));
   },
 
   requestArchive(fullName: string): Promise<{ archive_id: string; status: string }> {
-    return request<{ archive_id: string; status: string }>("/api/v1/archive", {
+    return request<{ archive_id: string; status: string }>(apiUrl("/api/v1/archive"), {
       method: "POST",
       body: JSON.stringify({ full_name: fullName }),
     });
   },
 
   downloadUrl(id: string): string {
-    return `/api/v1/download/${id}`;
+    return apiUrl(`/api/v1/download/${id}`);
   },
 
   adminOverview(token: string): Promise<AdminOverview> {
-    return request<AdminOverview>("/api/v1/admin/overview", {
+    return request<AdminOverview>(apiUrl("/api/v1/admin/overview"), {
       headers: { Authorization: `Bearer ${token}` },
     });
   },
